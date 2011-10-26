@@ -3310,7 +3310,6 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
 	ext4_group_t groupnr;
 	ext4_grpblk_t start;
 	int preallocated = 0;
-	int count = 0;
 	int len;
 
 	/* all form of preallocation discards first load group,
@@ -3333,7 +3332,6 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
 		BUG_ON(groupnr != group);
 		mb_set_bits(bitmap, start, len);
 		preallocated += len;
-		count++;
 	}
 	mb_debug(1, "prellocated %u for group %u\n", preallocated, group);
 }
