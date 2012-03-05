@@ -86,6 +86,22 @@ static u32 emif_errata;
 #define is_emif_erratum(erratum) (emif_errata & EMIF_ERRATUM_##erratum)
 
 
+/*
+ * EMIF Power Management timer for Self Refresh will put the external SDRAM
+ * in Self Refresh mode after the EMIF is idle for number of DDR clock cycles
+ * set with REG_SR_TIM. The minimal value starts at 16 cycles mapped to 1 in
+ * REG_SR_TIM.
+ * However due to Errata i735, the minimal value of REG_SR_TIM is 6. That
+ * corresponds to 512 DDR cycles required for OPP100
+*/
+#define EMIF_ERRATUM_SR_TIMER_i735	BIT(0)
+#define EMIF_ERRATUM_SR_TIMER_MIN	6
+
+static u32 emif_errata;
+#define is_emif_erratum(erratum) (emif_errata & EMIF_ERRATUM_##erratum)
+
+>>>>>>> 9de7d91... ARM: OMAP4: EMIF: implementation of errata i735 for PM timer
+
 static void do_cancel_out(u32 *num, u32 *den, u32 factor)
 {
 	while (1) {
