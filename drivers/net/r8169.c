@@ -3728,6 +3728,7 @@ out:
 	return rc;
 
 err_out_msi_4:
+	netif_napi_del(&tp->napi);
 	rtl_disable_msi(pdev, tp);
 	iounmap(ioaddr);
 err_out_free_res_3:
@@ -3752,6 +3753,8 @@ static void __devexit rtl8169_remove_one(struct pci_dev *pdev)
 	}
 
 	cancel_delayed_work_sync(&tp->task);
+
+	netif_napi_del(&tp->napi);
 
 	unregister_netdev(dev);
 
