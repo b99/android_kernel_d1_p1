@@ -149,6 +149,24 @@ struct tag_memclk {
 	__u32 fmemclk;
 };
 
+/* for automatic boot timing testcases */
+#define ATAG_BOOTTIME  0x41000403
+#define BOOTTIME_MAX_NAME_LEN 64
+#define BOOTTIME_MAX 10
+
+struct boottime_entry {
+	u32 time; /* in us */
+	u8  name[BOOTTIME_MAX_NAME_LEN];
+};
+
+struct tag_boottime {
+	struct boottime_entry entry[BOOTTIME_MAX];
+	u32 idle;  /* in us */
+	u32 total; /* in us */
+	u8 num;
+};
+
+
 #ifdef CONFIG_BOARD_ID
 #define ATAG_BOARDID 0x4D534D7B
 struct tag_boardid
@@ -192,8 +210,12 @@ struct tag {
 		struct tag_boardid boardid;
 #endif
 
-              struct tag_logctl    logctl;    
+		struct tag_logctl    logctl;
 
+		/*
+		 * Boot time
+		 */
+		struct tag_boottime	boottime;
 	} u;
 };
 
