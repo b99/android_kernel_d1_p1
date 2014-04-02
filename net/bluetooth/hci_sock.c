@@ -21,10 +21,6 @@
    COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS
    SOFTWARE IS DISCLAIMED.
 */
-/***********************************************************************
-*
-*Modify history          Author            Date                      Reason
-***********************************************************************/
 
 /* Bluetooth HCI sockets. */
 
@@ -378,6 +374,7 @@ static int hci_sock_getname(struct socket *sock, struct sockaddr *addr, int *add
 	*addr_len = sizeof(*haddr);
 	haddr->hci_family = AF_BLUETOOTH;
 	haddr->hci_dev    = hdev->id;
+	haddr->hci_channel= 0;
 
 	release_sock(sk);
 	return 0;
@@ -519,8 +516,8 @@ static int hci_sock_sendmsg(struct kiocb *iocb, struct socket *sock,
 		if (((ogf > HCI_SFLT_MAX_OGF) ||
 				!hci_test_bit(ocf & HCI_FLT_OCF_BITS, &hci_sec_filter.ocf_mask[ogf])) &&
 					!capable(CAP_NET_RAW)) {
-//			err = -EPERM;
-//			goto drop;
+			err = -EPERM;
+			goto drop;
 		}
 
 		if (test_bit(HCI_RAW, &hdev->flags) || (ogf == 0x3f)) {
@@ -590,6 +587,7 @@ static int hci_sock_setsockopt(struct socket *sock, int level, int optname, char
 		{
 			struct hci_filter *f = &hci_pi(sk)->filter;
 
+			memset(&uf, 0, sizeof(uf));
 			uf.type_mask = f->type_mask;
 			uf.opcode    = f->opcode;
 			uf.event_mask[0] = *((u32 *) f->event_mask + 0);
