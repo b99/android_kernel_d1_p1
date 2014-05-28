@@ -116,7 +116,7 @@ static int g_cfg80211_up = TRUE;
 #define WL_SCAN_ACTIVE_TIME	 40
 #define WL_SCAN_PASSIVE_TIME	130
 #define WL_FRAME_LEN			512
-
+#define WL_SCAN_BUSY_MAX	8
 
 #define DNGL_FUNC(func, parameters) func parameters;
 #define COEX_DHCP
@@ -1672,8 +1672,13 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 
 	WL_DBG(("Enter wiphy (%p)\n", wiphy));
 	if (wl_get_drv_status_all(wl, SCANNING)) {
-		WL_ERR(("Scanning already\n"));
-		return -EAGAIN;
+	           if (wl->scan_request == NULL) {
+                         wl_clr_drv_status_all(wl, SCANNING);
+                         WL_DBG(("<<<<<<<<<<<Force Clear Scanning Status>>>>>>>>>>>\n"));
+                 } else {
+                         WL_ERR(("Scanning already\n"));
+                         return -EAGAIN;
+                 }
 	}
 	if (wl_get_drv_status(wl, SCAN_ABORTING, ndev)) {
 		WL_ERR(("Scanning being aborted\n"));
@@ -1855,6 +1860,13 @@ wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 	err = __wl_cfg80211_scan(wiphy, ndev, request, NULL);
 	if (unlikely(err)) {
 		WL_ERR(("scan error (%d)\n", err));
+		if (err == BCME_BUSY) {
+ 			wl->scan_busy_count++;
+ 			if (wl->scan_busy_count > WL_SCAN_BUSY_MAX) {
+ 				wl->scan_busy_count = 0;
+ 				net_os_send_hang_message(ndev);
+ 			}
+ 		}
 		return err;
 	}
 
@@ -4733,8 +4745,8 @@ exit:
 	return err;
 }
 #ifdef WL_SCHED_SCAN
-#define PNO_TIME	30
-#define PNO_REPEAT	4
+#define PNO_TIME		30
+#define PNO_REPEAT		4
 #define PNO_FREQ_EXPO_MAX	2
 int wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
                              struct net_device *dev,
@@ -4750,9 +4762,11 @@ int wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	int i;
 	int ret = 0;
 
-	WL_DBG(("Enter n_match_sets:%d   n_ssids:%d \n",
+	WL_DBG(("Enter \n"));
+	WL_PNO((">>> SCHED SCAN START\n"));
+	WL_PNO(("Enter n_match_sets:%d   n_ssids:%d \n",
 		request->n_match_sets, request->n_ssids));
-	WL_DBG(("ssids:%d pno_time:%d pno_repeat:%d pno_freq:%d \n",
+	WL_PNO(("ssids:%d pno_time:%d pno_repeat:%d pno_freq:%d \n",
 		request->n_ssids, pno_time, pno_repeat, pno_freq_expo_max));
 
 #if defined(WL_ENABLE_P2P_IF)
@@ -4775,7 +4789,7 @@ int wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 			ssid = &request->match_sets[i].ssid;
 			memcpy(ssids_local[i].SSID, ssid->ssid, ssid->ssid_len);
 			ssids_local[i].SSID_len = ssid->ssid_len;
-			WL_DBG((">>> PNO filter set for ssid (%s) \n", ssid->ssid));
+			WL_PNO((">>> PNO filter set for ssid (%s) \n", ssid->ssid));
 			ssid_count++;
 		}
 	}
@@ -4783,7 +4797,7 @@ int wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	if (request->n_ssids > 0) {
 		for (i = 0; i < request->n_ssids; i++) {
 			/* Active scan req for ssids */
-			WL_DBG((">>> Active scan req for ssid (%s) \n", request->ssids[i].ssid));
+			WL_PNO((">>> Active scan req for ssid (%s) \n", request->ssids[i].ssid));
 
 			/* match_set ssids is a supert set of n_ssid list, so we need
 			 * not add these set seperately
@@ -4816,6 +4830,7 @@ int wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 	struct wl_priv *wl = wiphy_priv(wiphy);
 
 	WL_DBG(("Enter \n"));
+	WL_PNO((">>> SCHED SCAN STOP\n"));
 
 	if (dhd_dev_pno_enable(dev, 0) < 0)
 		WL_ERR(("PNO disable failed"));
@@ -4824,6 +4839,7 @@ int wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 		WL_ERR(("PNO reset failed"));
 
 	if (wl->scan_request && wl->sched_scan_running) {
+		WL_PNO((">>> Sched scan running. Aborting it..\n"));
 		wl_notify_escan_complete(wl, dev, true, true);
 	}
 
@@ -5825,19 +5841,19 @@ static s32
 wl_notify_pfn_status(struct wl_priv *wl, struct net_device *ndev,
 	const wl_event_msg_t *e, void *data)
 {
-	WL_ERR((" PNO Event\n"));
+	WL_ERR((">>> PNO Event\n"));
 
-	mutex_lock(&wl->usr_sync);
 #ifndef WL_SCHED_SCAN
+	mutex_lock(&wl->usr_sync);
 	/* TODO: Use cfg80211_sched_scan_results(wiphy); */
 	cfg80211_disconnected(ndev, 0, NULL, 0, GFP_KERNEL);
+	mutex_unlock(&wl->usr_sync);
 #else
 	/* If cfg80211 scheduled scan is supported, report the pno results via sched
 	 * scan results
 	 */
 	wl_notify_sched_scan_results(wl, ndev, e, data);
 #endif /* WL_SCHED_SCAN */
-	mutex_unlock(&wl->usr_sync);
 	return 0;
 }
 #endif /* PNO_SUPPORT */
@@ -5853,6 +5869,7 @@ wl_notify_scan_status(struct wl_priv *wl, struct net_device *ndev,
 	unsigned long flags;
 
 	WL_DBG(("Enter \n"));
+	wl->scan_busy_count = 0;
 	if (!wl_get_drv_status(wl, SCANNING, ndev)) {
 		WL_ERR(("scan is not ready \n"));
 		return err;
@@ -5894,14 +5911,15 @@ scan_done_out:
 	del_timer_sync(&wl->scan_timeout);
 	spin_lock_irqsave(&wl->cfgdrv_lock, flags);
 	if (wl->scan_request) {
-		WL_DBG(("cfg80211_scan_done\n"));
 		cfg80211_scan_done(wl->scan_request, false);
 		wl->scan_request = NULL;
 	}
 	spin_unlock_irqrestore(&wl->cfgdrv_lock, flags);
+	WL_DBG(("cfg80211_scan_done\n"));
 	mutex_unlock(&wl->usr_sync);
 	return err;
 }
+
 static s32
 wl_frame_get_mgmt(u16 fc, const struct ether_addr *da,
 	const struct ether_addr *sa, const struct ether_addr *bssid,
@@ -6058,7 +6076,7 @@ exit:
 /* If target scan is not reliable, set the below define to "1" to do a
  * full escan
  */
-#define FULL_ESCAN_ON_PFN_NET_FOUND		0
+#define FULL_ESCAN_ON_PFN_NET_FOUND		1
 static s32
 wl_notify_sched_scan_results(struct wl_priv *wl, struct net_device *ndev,
 	const wl_event_msg_t *e, void *data)
@@ -6076,10 +6094,10 @@ wl_notify_sched_scan_results(struct wl_priv *wl, struct net_device *ndev,
 	WL_DBG(("Enter\n"));
 
 	if (e->event_type == WLC_E_PFN_NET_LOST) {
-		WL_DBG(("PFN NET LOST event. Do Nothing \n"));
+		WL_PNO(("PFN NET LOST event. Do Nothing \n"));
 		return 0;
 	}
-	WL_DBG(("PFN NET FOUND event. count:%d \n", pfn_result->count));
+	WL_PNO((">>> PFN NET FOUND event. count:%d \n", pfn_result->count));
 	if (pfn_result->count > 0) {
 		int i;
 
@@ -6105,7 +6123,7 @@ wl_notify_sched_scan_results(struct wl_priv *wl, struct net_device *ndev,
 				err = -EINVAL;
 				goto out_err;
 			}
-			WL_DBG(("SSID:%s Channel:%d \n",
+			WL_PNO((">>> SSID:%s Channel:%d \n",
 				netinfo->pfnsubnet.SSID, netinfo->pfnsubnet.channel));
 			/* PFN result doesn't have all the info which are required by the supplicant
 			 * (For e.g IEs) Do a target Escan so that sched scan results are reported
@@ -6138,6 +6156,7 @@ wl_notify_sched_scan_results(struct wl_priv *wl, struct net_device *ndev,
 		}
 
 		if (wl_get_p2p_status(wl, DISCOVERY_ON)) {
+			WL_PNO((">>> P2P discovery was ON. Disabling it\n"));
 			err = wl_cfgp2p_discover_enable_search(wl, false);
 			if (unlikely(err)) {
 				wl_clr_drv_status(wl, SCANNING, ndev);
@@ -6147,8 +6166,10 @@ wl_notify_sched_scan_results(struct wl_priv *wl, struct net_device *ndev,
 
 		wl_set_drv_status(wl, SCANNING, ndev);
 #if FULL_ESCAN_ON_PFN_NET_FOUND
+		WL_PNO((">>> Doing Full ESCAN on PNO event\n"));
 		err = wl_do_escan(wl, wiphy, ndev, NULL);
 #else
+		WL_PNO((">>> Doing targeted ESCAN on PNO event\n"));
 		err = wl_do_escan(wl, wiphy, ndev, &request);
 #endif
 		if (err) {
@@ -6604,7 +6625,7 @@ static s32 wl_notify_escan_complete(struct wl_priv *wl,
 	struct net_device *dev;
 
 	WL_DBG(("Enter \n"));
-
+	wl->scan_busy_count = 0;
 	if (wl->scan_request) {
 		if (wl->scan_request->dev == wl->p2p_net)
 			dev = wl_to_prmry_ndev(wl);
@@ -6612,9 +6633,9 @@ static s32 wl_notify_escan_complete(struct wl_priv *wl,
 			dev = wl->scan_request->dev;
 	}
 	else {
-		WL_ERR(("wl->scan_request is NULL may be internal scan."
-			"doing scan_abort for ndev %p primary %p p2p_net %p",
-				ndev, wl_to_prmry_ndev(wl), wl->p2p_net));
+		WL_DBG(("wl->scan_request is NULL may be internal scan."
+			"doing scan_abort for ndev %p primary %p",
+				ndev, wl_to_prmry_ndev(wl)));
 		dev = ndev;
 	}
 	if (fw_abort && !in_atomic()) {
@@ -6634,19 +6655,15 @@ static s32 wl_notify_escan_complete(struct wl_priv *wl,
 	if (timer_pending(&wl->scan_timeout))
 		del_timer_sync(&wl->scan_timeout);
 	spin_lock_irqsave(&wl->cfgdrv_lock, flags);
-
 #ifdef WL_SCHED_SCAN
 	if (wl->sched_scan_req && !wl->scan_request) {
-		WL_DBG((" REPORTING SCHED SCAN RESULTS \n"));
-		if (aborted)
-			cfg80211_sched_scan_stopped(wl->sched_scan_req->wiphy);
-		else
+		WL_PNO((">>> REPORTING SCHED SCAN RESULTS \n"));
+		if (!aborted)
 			cfg80211_sched_scan_results(wl->sched_scan_req->wiphy);
 		wl->sched_scan_running = FALSE;
 		wl->sched_scan_req = NULL;
 	}
 #endif /* WL_SCHED_SCAN */
-
 	if (likely(wl->scan_request)) {
 		cfg80211_scan_done(wl->scan_request, aborted);
 		wl->scan_request = NULL;
@@ -6671,6 +6688,7 @@ static s32 wl_escan_handler(struct wl_priv *wl,
 	wl_escan_result_t *escan_result;
 	wl_bss_info_t *bss = NULL;
 	wl_scan_results_t *list;
+	wifi_p2p_ie_t * p2p_ie;
 	u32 bi_length;
 	u32 i;
 	u8 *p2p_dev_addr = NULL;
@@ -6690,15 +6708,18 @@ static s32 wl_escan_handler(struct wl_priv *wl,
 
 	}
 	if (!ndev || !wl->escan_on ||
-		!wl_get_drv_status(wl, SCANNING, ndev)) {
-		WL_ERR(("escan is not ready ndev %p wl->escan_on %d drv_status 0x%x\n",
-			ndev, wl->escan_on, wl_get_drv_status(wl, SCANNING, ndev)));
-		return err;
+		(!wl_get_drv_status(wl, SCANNING, ndev) &&
+ 		!wl->sched_scan_running)) {
+ 		WL_ERR(("escan is not ready ndev %p wl->escan_on %d"
+ 			" drv_status 0x%x e_type %d e_states %d\n",
+ 			ndev, wl->escan_on, wl_get_drv_status(wl, SCANNING, ndev),
+ 			ntoh32(e->event_type), ntoh32(e->status)));
+		goto exit;
 	}
+	    escan_result = (wl_escan_result_t *)data;
 
 	if (status == WLC_E_STATUS_PARTIAL) {
 		WL_INFO(("WLC_E_STATUS_PARTIAL \n"));
-		escan_result = (wl_escan_result_t *) data;
 		if (!escan_result) {
 			WL_ERR(("Invalid escan result (NULL pointer)\n"));
 			goto exit;
