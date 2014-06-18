@@ -243,7 +243,7 @@ static inline int bluesleep_can_sleep(void)
 
 void bluesleep_sleep_wakeup(void)
 {
-    unsigned int timeout_cnt = BT_WAIT_UART_TIMEOUT;
+//    unsigned int timeout_cnt = BT_WAIT_UART_TIMEOUT;
     BT_DBG("flags:%lu",  flags);
     if (test_bit(BT_ASLEEP, &flags)) {
         BT_INFO("waking up...");
@@ -257,10 +257,10 @@ void bluesleep_sleep_wakeup(void)
         clear_bit(BT_ASLEEP, &flags);
 
     }
-    else
+/*    else
     {
             mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
-    }
+    }*/
 }
 
 /**
