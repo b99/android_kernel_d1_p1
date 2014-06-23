@@ -1115,16 +1115,13 @@ static struct musb_fifo_cfg __initdata mode_4_cfg[] = {
 { .hw_ep_num =  8, .style = FIFO_RX,   .maxpacket = 512, },
 { .hw_ep_num =  9, .style = FIFO_TX,   .maxpacket = 512, },
 { .hw_ep_num =  9, .style = FIFO_RX,   .maxpacket = 512, },
-// change the TX buffer size so the endpoint buffer size requirement is met
-// Usually bulk endpoint's max packet size is 512, if we have many endpoints
-// this configuration would work
-{ .hw_ep_num = 10, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num = 10, .style = FIFO_TX,   .maxpacket = 256, },
 { .hw_ep_num = 10, .style = FIFO_RX,   .maxpacket = 64, },
-{ .hw_ep_num = 11, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num = 11, .style = FIFO_TX,   .maxpacket = 256, },
 { .hw_ep_num = 11, .style = FIFO_RX,   .maxpacket = 64, },
-{ .hw_ep_num = 12, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num = 12, .style = FIFO_TX,   .maxpacket = 256, },
 { .hw_ep_num = 12, .style = FIFO_RX,   .maxpacket = 64, },
-{ .hw_ep_num = 13, .style = FIFO_RXTX, .maxpacket = 2048, },
+{ .hw_ep_num = 13, .style = FIFO_RXTX, .maxpacket = 4096, },
 { .hw_ep_num = 14, .style = FIFO_RXTX, .maxpacket = 1024, },
 { .hw_ep_num = 15, .style = FIFO_RXTX, .maxpacket = 1024, },
 };
@@ -2094,7 +2091,6 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 						"musb_autosuspend_wake_lock");
 
 	pm_runtime_put(musb->controller);
-
 	status = musb_init_debugfs(musb);
 	if (status < 0)
 		goto fail4;
