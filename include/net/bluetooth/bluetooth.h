@@ -153,10 +153,6 @@ void bt_accept_enqueue(struct sock *parent, struct sock *sk);
 void bt_accept_unlink(struct sock *sk);
 struct sock *bt_accept_dequeue(struct sock *parent, struct socket *newsock);
 
-void bluesleep_outgoing_data(void);
-void bluesleep_uart_open(struct uart_port* uport);
-void bluesleep_uart_close(struct uart_port* uport);
-
 /* Skb helpers */
 struct bt_skb_cb {
 	__u8 pkt_type;

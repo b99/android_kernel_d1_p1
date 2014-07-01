@@ -36,8 +36,6 @@
 #include <asm/irq.h>
 #include <asm/uaccess.h>
 
-#include <net/bluetooth/bluetooth.h>
-
 /*
  * This is used to lock changes in serial line configuration.
  */
@@ -521,10 +519,7 @@ static int uart_write(struct tty_struct *tty,
 
 	if (!circ->buf)
 		return 0;
-        if (tty->name && !strcmp(tty->name, "ttyO1")){
-            //printk(KERN_INFO "outgoing data, tty->name is [%s]\n", tty->name);
-            bluesleep_outgoing_data();
-        }
+
 	spin_lock_irqsave(&port->lock, flags);
 	while (1) {
 		c = CIRC_SPACE_TO_END(circ->head, circ->tail, UART_XMIT_SIZE);
@@ -1272,10 +1267,6 @@ static void uart_close(struct tty_struct *tty, struct file *filp)
 	uport = state->uart_port;
 	port = &state->port;
 
-        if (tty->name && !strcmp(tty->name, "ttyO1")){
-            printk(KERN_INFO "uart close, tty->name is [%s]\n", tty->name);
-            bluesleep_uart_close(uport);
-        }
 	pr_debug("uart_close(%d) called\n", uport->line);
 
 	mutex_lock(&port->mutex);
@@ -1593,11 +1584,6 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 	mutex_unlock(&port->mutex);
 	if (retval == 0)
 		retval = tty_port_block_til_ready(port, tty, filp);
-
-        if (tty->name && !strcmp(tty->name, "ttyO1")){
-            printk(KERN_INFO "uart open, tty->name is [%s]\n", tty->name);
-            bluesleep_uart_open(state->uart_port);
-        }
 
 fail:
 	return retval;

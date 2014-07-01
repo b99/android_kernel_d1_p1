@@ -1597,6 +1597,9 @@ int omap_uart_recalibrate_baud_cb(struct notifier_block *nb,
 }
 #endif
 
+#define BT_UART_DEV_PORT 1
+extern void bluesleep_setup_uart_port(struct platform_device *uart_dev);
+
 static int serial_omap_probe(struct platform_device *pdev)
 {
 	struct uart_omap_port	*up = NULL;
@@ -1732,7 +1735,8 @@ static int serial_omap_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, up);
 	platform_set_drvdata(pdev, up);
-
+	if (pdev->id == BT_UART_DEV_PORT)
+		bluesleep_setup_uart_port(pdev);
 	return 0;
 
 do_free_irq:

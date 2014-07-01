@@ -887,6 +887,7 @@ void bluetooth_power_up(void)
 #endif
 }
 EXPORT_SYMBOL(bluetooth_power_up);
+extern void bluesleep_set_suspend_bit(int on);
 static int bluetooth_power(int on)
 {
     if(on){
@@ -900,7 +901,8 @@ static int bluetooth_power(int on)
 
 
         omap_mux_init_signal("kpd_row2.gpio_3", OMAP_PIN_INPUT_PULLUP | OMAP_MUX_MODE3|OMAP_WAKEUP_EN);
-
+	    
+	 bluesleep_set_suspend_bit(0);
          //plat_uart_enable();
     }
     else{
@@ -911,6 +913,7 @@ static int bluetooth_power(int on)
         twl_suspend_power_control(0,on);  	
         omap_mux_init_signal("kpd_row2.gpio_3",OMAP_PIN_INPUT_PULLUP | OMAP_MUX_MODE3);
 
+	bluesleep_set_suspend_bit(1);
         //plat_uart_disable();
     }
 
