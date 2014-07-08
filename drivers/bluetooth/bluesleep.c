@@ -290,8 +290,8 @@ void bluesleep_outgoing_data(void)
 {
     unsigned long irq_flags;
 
-    if(!test_bit(BT_TXDATA, &flags))
-        BT_INFO("bluesleep_outgoing_data");
+    BT_DBG("in");
+
     spin_lock_irqsave(&rw_lock, irq_flags);
 
     /* log data passing by */
