@@ -58,3 +58,4 @@ obj-$(CONFIG_GCBV)		+= gcx/gcbv/
 obj-$(CONFIG_GCIOCTL)		+= gcx/gcioctl/
 obj-$(CONFIG_CACHE2DMANAGER)	+= cache-2dmanager/
 obj-$(CONFIG_APANIC_MMC)	+= apanic_mmc.o
+obj-$(CONFIG_CUSTOM_VOLTAGE)	+= custom_voltage.o
