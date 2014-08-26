@@ -1,0 +1,2 @@
+export KERNELDIR=~/android/huawei/android_kernel_huawei_viva/obj/KERNEL_OBJ/
+make ARCH=arm CROSS_COMPILE=~/android/cm11/prebuilts/gcc/linux-x86/arm/linaro-4.8/bin/arm-eabi- TARGET_PRODUCT="blaze" BUILD=release TARGET_SGX=540 PLATFORM_VERSION=4.0
