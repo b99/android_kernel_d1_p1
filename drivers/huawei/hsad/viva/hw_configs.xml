@@ -1,0 +1,63 @@
+
+<!-- 
+ /*==============================================================================
+ History
+
+ Problem NO.         Name        Time         Reason
+ ==============================================================================*/
+-->
+<?xml version="1.0" ?>
+<allconfigs>
+<id id0="0" id1="1" id2="2"/>
+<module name="lcd">
+<!--  Reason: Add for lcd-compatible  -->
+   <config name="number" value="1" type="int" />
+   <config name="name" value="spanel" type="string" />
+
+   <config name="index" value="123" type="int" />
+   <config name="pin_id" value="456" type="int" />
+   <config name="init_index"  value="789" type="int" />
+</module>
+<module name="touchscreen">
+   <config name="size" value="WVGA" type="string" />
+   <config name="front" value="no" type="bool" />
+</module>
+<module name="audio">
+   <config name="enhance_type" value="dts" type="string" />
+   <config name="vibrator_driver" value="BOTH" type="string" />
+</module>
+<!--  Reason: Add for CI2CA pullup/pulldown  -->
+<module name="mhl">
+   <config name="ci2ca_is_pull_up" value="yes" type="bool" />
+   <config name="mhl_connect" value="yes" type="bool" />
+</module>
+<module name="pm">
+   <config name="current_limt" value="LIMIT_700MA" type="string" />
+</module>
+<module name="gas_gauge">
+   <config name="firmware_name" value="BQ27510_GUANGYU_1670" type="string" />
+   <config name="charge_voltage" value="4200" type="int" />
+   <config name="charge_current" value="1000" type="int" />
+   <config name="version" value="0x14400a4" type="int" />
+   <config name="capacity" value="1670" type="int" />
+</module>
+<!--   Reason: Add for leds type    -->
+<module name="leds">
+   <config name="leds_type" value="gpio" type="string" />
+</module>
+<module name="tklight">
+   <config name="touchkeylight" value="no" type="bool" />
+</module>
+<module name="usbeye">
+   <config name="trim_value" value="0x24" type="int" />
+</module>
+<module name="proximity">
+   <config name="threshold" value="0" type="int" />
+</module>
+<module name="test_version">
+   <config name="if_test_version" value="true" type="string" />
+</module>
+<module name="sysen">
+   <config name="board_value" value="0x05" type="int" />
+</module>
+</allconfigs>

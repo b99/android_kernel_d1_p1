@@ -1,0 +1,78 @@
+
+<!-- 
+ /*==============================================================================
+ History
+
+ Problem NO.         Name        Time         Reason
+ ==============================================================================*/
+-->
+<?xml version="1.0" ?>
+<allconfigs>
+<id id0="0" id1="4" id2="1"/>
+<module name="lcd">
+
+<!--  Reason: Add for lcd-compatible  -->
+   <config name="number" value="1" type="int" />
+   <config name="name" value="mdv20" type="string" />
+
+   <config name="id0" value="LCD_R61529_TRULY_HVGA" type="string" />
+   <config name="id1" value="LCD_MDDI_NT35582_BYD_WVGA" type="string" />
+   <config name="sample">
+       <config name="sub_sample1" type="string" value="HVGA" />
+       <config name="sub_sample2" type="bool" value="yes"/>
+       <config name="sub_sample3" type="int" value="80" />
+   </config>
+</module>
+<module name="touchscreen">
+   <config name="size" value="720A" type="string" />
+   <config name="front" value="no" type="bool" />
+</module>
+<module name="audio">
+   <config name="enhance_type" value="dts" type="string" />
+   <config name="audience_type" value="uart" type="string" />
+   <config name="vibrator_driver" value="AUX3" type="string" />
+</module>
+<!--  Reason: Add for CI2CA pullup/pulldown  -->
+<module name="mhl">
+   <config name="ci2ca_is_pull_up" value="yes" type="bool" />
+   <config name="mhl_connect" value="no" type="bool" />
+</module>
+<module name="pm">
+   <config name="current_limt" value="LIMIT_700MA" type="string" />
+</module>
+<module name="gas_gauge">
+   <config name="firmware_name" value="BQ27510_LG_1800" type="string" />
+   <config name="charge_voltage" value="4340" type="int" />
+   <config name="charge_current" value="1000" type="int" />
+   <config name="version" value="0x30200a4" type="int" />
+   <config name="capacity" value="1800" type="int" />
+</module>
+<module name="sdcard">
+   <config name="sw_fc" value="0" type="int" />
+</module>
+<module name="xmd">
+   <config name="xmd_ready_gpio_enable" value="1" type="int" />
+</module>
+<!--   Reason: Add for leds type    -->
+<module name="leds">
+   <config name="leds_type" value="tca6507" type="string" />
+</module>
+<module name="tklight">
+   <config name="touchkeylight" value="yes" type="bool" />
+</module>
+<module name="usbeye">
+   <config name="trim_value" value="0x37" type="int" />
+</module>
+<module name="proximity">
+   <config name="threshold" value="2" type="int" />
+</module>
+<module name="test_version">
+   <config name="if_test_version" value="true" type="string" />
+</module>
+<module name="sysen">
+   <config name="board_value" value="0x01" type="int" />
+</module>
+<module name="dss_pwrdm">
+   <config name="dss_pwrdm_en" value="no" type="bool" />
+</module>
+</allconfigs>
