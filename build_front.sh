@@ -15,7 +15,7 @@ export ARCH=arm
 export SUBARCH=arm
 export CROSS_COMPILE=~/AndroidSources/linaro-4.9.2/bin/arm-eabi-
 export LOCALVERSION="-stable-f2fs"
-export CCACHE_DIR=~/.ccache/kernel
+export CCACHE_DIR=~/.ccache/kernel31
 ccache -M 5G
 ##############################################################################
 # set variables
