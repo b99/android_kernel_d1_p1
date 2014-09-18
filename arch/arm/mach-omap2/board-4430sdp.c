@@ -41,6 +41,7 @@
 #include <linux/memblock.h>
 #include <linux/mfd/twl6040-codec.h>
 
+#include <linux/earlysuspend.h>
 #include <mach/hardware.h>
 #include <mach/omap4-common.h>
 #include <mach/emif.h>
@@ -2673,6 +2674,18 @@ static int blaze_notifier_call(struct notifier_block *this,
             strcpy(sar_base + 0xA0C, "huawei_reboot");
             v |= OMAP4430_RST_GLOBAL_COLD_SW_MASK;
         }
+
+#if defined(CONFIG_DSSCOMP) && defined(CONFIG_EARLYSUSPEND)
+	/*
+	 * HACK: Blank screen to avoid screen artifacts due to removal of
+	 * DSS/panel drivers shutdown in reboot path.
+	 */
+	{
+		extern void dsscomp_early_suspend(struct early_suspend *h);
+
+		dsscomp_early_suspend(NULL);
+	}
+#endif
 
     /*omap4_prm_write_inst_reg(0xfff, OMAP4430_PRM_DEVICE_INST,
             OMAP4_RM_RSTST);
