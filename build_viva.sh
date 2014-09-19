@@ -24,12 +24,16 @@ STRIP=${CROSS_COMPILE}strip
 # make zImage
 ##############################################################################
 mkdir -p $KERNEL_OUT
+mkdir -p obj/tmp/kernel
+mkdir -p obj/tmp/system/lib/modules
+
 make O=$KERNEL_OUT viva_defconfig
-make -j4 O=$KERNEL_OUT
+make -j6 O=$KERNEL_OUT
 
 if [ -f $KERNEL_OUT/arch/arm/boot/zImage ]
 then
     cp -f $KERNEL_OUT/arch/arm/boot/zImage ./
+    cp -f $KERNEL_OUT/arch/arm/boot/zImage ./obj/tmp/kernel/zImage
 fi
 
 ##############################################################################
@@ -44,5 +48,11 @@ then
     make clean -C $KERNELDIR/sgx/pvr-source/eurasiacon/build/linux2/omap4430_android
     rm -r $KERNELDIR/sgx/pvr-source/eurasiacon/binary2_540_120_omap4430_android_release
     cp $KERNEL_OUT/pvrsrvkm_sgx540_120.ko ./pvrsrvkm_sgx540_120.ko
+    cp $KERNEL_OUT/pvrsrvkm_sgx540_120.ko ./obj/tmp/system/lib/modules/pvrsrvkm_sgx540_120.ko
+    pushd obj/tmp
+    zip -r ../../new_kernel_omap.zip ./system/
+    zip -r ../../new_kernel_omap.zip ./kernel/
 fi
+
+
 
