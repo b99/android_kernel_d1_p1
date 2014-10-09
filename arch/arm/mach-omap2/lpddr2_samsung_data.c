@@ -15,11 +15,11 @@
 
 const struct lpddr2_timings timings_samsung_400_mhz = {
 	.max_freq	= 400000000,
-	.RL		= 6,
-	.tRPab		= 21,
-	.tRCD		= 18,
-	.tWR		= 15,
-	.tRASmin	= 42,
+	.RL		= 5,
+	.tRPab		= 14,
+	.tRCD		= 14,
+	.tWR		= 10,
+	.tRASmin	= 30,
 	.tRRD		= 10,
 	.tWTRx2		= 15,
 	.tXSR		= 140,
