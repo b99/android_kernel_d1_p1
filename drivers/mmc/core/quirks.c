@@ -329,6 +329,10 @@ void mmc_fixup_samsung_fw(struct mmc_card *card)
 			mmc_hostname(card->host), err);
 }
 
+#if __GNUC__ > 4 || ( __GNUC__ == 4 && __GNUC_MINOR__ >= 8 )
+#pragma GCC pop_options
+#endif
+
 #ifdef CONFIG_MMC_SAMSUNG_SMART
 static int mmc_samsung_smart_read(struct mmc_card *card, u8 *rdblock)
 {
