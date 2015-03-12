@@ -91,9 +91,6 @@ static ssize_t reset_store(struct device *dev,
 	zram = dev_to_zram(dev);
 	bdev = bdget_disk(zram->disk, 0);
 
-	if (!bdev)
-		return -ENOMEM;
-
 	/* Do not reset an active device! */
 	if (bdev->bd_holders)
 		return -EBUSY;
@@ -106,7 +103,8 @@ static ssize_t reset_store(struct device *dev,
 		return -EINVAL;
 
 	/* Make sure all pending I/O is finished */
-	fsync_bdev(bdev);
+	if (bdev)
+		fsync_bdev(bdev);
 
 	if (zram->init_done)
 		zram_reset_device(zram);
