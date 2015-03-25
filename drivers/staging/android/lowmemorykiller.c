@@ -41,7 +41,7 @@
 #ifdef CONFIG_HUAWEI_FEATURE_LOW_MEMORY_KILLER_STUB
 #include "../../char/lowmemorykiller_stub.h"
 #endif
-static uint32_t lowmem_debug_level = 2;
+static uint32_t lowmem_debug_level = 1;
 static int lowmem_adj[6] = {
 	0,
 	1,
