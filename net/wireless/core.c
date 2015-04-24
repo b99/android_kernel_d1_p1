@@ -762,9 +762,7 @@ static void wdev_cleanup_work(struct work_struct *work)
 	mutex_unlock(&rdev->devlist_mtx);
 	wake_up(&rdev->dev_wait);
 
-	//To avoid kernel reboot when delete netdev "p2p-wlan0"
-	if (NULL == strstr(wdev->netdev->name, "p2p"))
-		dev_put(wdev->netdev);
+	dev_put(wdev->netdev);
 }
 
 static struct device_type wiphy_type = {
@@ -870,9 +868,7 @@ static int cfg80211_netdev_notifier_call(struct notifier_block * nb,
 		wdev->beacon_interval = 0;
 		break;
 	case NETDEV_DOWN:
-		//To avoid kernel reboot when delete netdev "p2p-wlan0"
-		if (NULL == strstr(wdev->netdev->name, "p2p"))
-			dev_hold(dev);
+		dev_hold(dev);
 		queue_work(cfg80211_wq, &wdev->cleanup_work);
 		break;
 	case NETDEV_UP:
