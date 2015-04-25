@@ -4,6 +4,7 @@
 #                           Kernel Build Script
 #
 ###############################################################################
+# 2014-09-23 Shev_t       : modified
 # 2011-10-24 effectivesky : modified
 # 2010-12-29 allydrop     : created
 ###############################################################################
@@ -14,9 +15,14 @@ then
     rm ./zImage
 fi
 
-if [ -f ./pvrsrvkm_sgx540_120.ko ]
+if [ -f ./kernel*.zip ]
 then
-    rm ./pvrsrvkm_sgx540_120.ko
+    rm ./kernel*.zip
+fi
+
+if [ -f ./*.ko ]
+then
+    rm ./*.ko
 fi
 
 if [ -d ./obj/ ]
