@@ -20,7 +20,7 @@
 #include <linux/time.h>
 #include <linux/cache.h>
 
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <asm/types.h>
 #include <linux/spinlock.h>
 #include <linux/net.h>
@@ -2134,6 +2134,14 @@ static inline void nf_reset(struct sk_buff *skb)
 #ifdef CONFIG_BRIDGE_NETFILTER
 	nf_bridge_put(skb->nf_bridge);
 	skb->nf_bridge = NULL;
+#endif
+}
+
+static inline void nf_reset_trace(struct sk_buff *skb)
+{
+#if defined(CONFIG_NETFILTER_XT_TARGET_TRACE) || \
+	defined(CONFIG_NETFILTER_XT_TARGET_TRACE_MODULE)
+	skb->nf_trace = 0;
 #endif
 }
 
