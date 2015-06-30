@@ -15,7 +15,7 @@
 
 #include <linux/kref.h>
 #include <linux/slab.h>
-#include <linux/atomic.h>
+#include <asm/atomic.h>
 #include <linux/proc_fs.h>
 
 /*
@@ -221,6 +221,22 @@ static inline int get_int(char **bpp, int *anint)
 	rv = simple_strtol(buf, &ep, 0);
 	if (*ep) return -EINVAL;
 	*anint = rv;
+	return 0;
+}
+
+static inline int get_uint(char **bpp, unsigned int *anint)
+{
+	char buf[50];
+	int len = qword_get(bpp, buf, sizeof(buf));
+
+	if (len < 0)
+		return -EINVAL;
+	if (len == 0)
+		return -ENOENT;
+
+	if (kstrtouint(buf, 0, anint))
+		return -EINVAL;
+
 	return 0;
 }
 

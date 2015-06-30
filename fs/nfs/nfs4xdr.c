@@ -2379,7 +2379,6 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
 
 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
 		args->acl_pages, args->acl_pgbase, args->acl_len);
-	xdr_set_scratch_buffer(xdr, page_address(args->acl_scratch), PAGE_SIZE);
 
 	encode_nops(&hdr);
 }
@@ -5688,6 +5687,10 @@ nfs4_xdr_dec_getacl(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
 	struct compound_hdr hdr;
 	int status;
 
+	if (res->acl_scratch != NULL) {
+		void *p = page_address(res->acl_scratch);
+		xdr_set_scratch_buffer(xdr, p, PAGE_SIZE);
+	}
 	status = decode_compound_hdr(xdr, &hdr);
 	if (status)
 		goto out;
@@ -5760,7 +5763,8 @@ static int nfs4_xdr_dec_open(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
 	status = decode_open(xdr, res);
 	if (status)
 		goto out;
-	if (decode_getfh(xdr, &res->fh) != 0)
+	status = decode_getfh(xdr, &res->fh);
+	if (status)
 		goto out;
 	if (decode_getfattr(xdr, res->f_attr, res->server,
 				!RPC_IS_ASYNC(rqstp->rq_task)) != 0)
