@@ -1728,14 +1728,8 @@ static int twl6030_set_watchdog(struct twl6030_bci_device_info *di, int val)
 static int modem_off = false;
 int notify_mdm_off_to_pm(void)
 {
-	if (system_state != SYSTEM_RUNNING)
-		return 0;
-	if ((bq27510_battery_voltage(&dev27510) < 3400)&&
-		(get_plugin_device_status() == PLUGIN_DEVICE_NONE)){
-        modem_off = true;
-        return 1;
-	}
-	return 0;
+    modem_off = false;
+    return 0;
 }
 
 static int calc_capacity_from_voltage(void)
@@ -1803,12 +1797,6 @@ static int capacity_changed(struct twl6030_bci_device_info *di)
         di->capacity = curr_capacity;
         di->prev_capacity = curr_capacity;
         di->capacity_debounce_count = 0;
-        return 1;
-    }
-
-    if (modem_off) {
-        dev_info(di->dev," modem off so shut down AP and curr_capacity = %d \n", curr_capacity);
-        curr_capacity = 0;
         return 1;
     }
 

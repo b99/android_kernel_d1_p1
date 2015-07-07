@@ -325,7 +325,7 @@ static void xmd_boot_reset2_work (struct work_struct *work)
 	    xmd_change_notify_event(XMD_STATE_POWER);
 	} else {
             set_xmd_ack_cp_ready( XMD_STATE_OFF );
-            pr_info("XMD: %s. RESET2_N falling edge: modem abnormal power off;\n", __func__ );
+            pr_info("XMD: %s. RESET2_N falling edge: MODEM ABNORMAL POWER OFF!!!;\n", __func__ );
             /* modem abnormal power off handing */
             if (cp_shutdown_get() == false){
                 notify_mdm_off_to_pm();

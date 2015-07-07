@@ -300,6 +300,7 @@ static void setUsbSwitch(int value)
       //      if ( usb_switch.state == USB_MODEM )
       //          return;
             usb_switch.state = USB_MODEM;
+        printk(">>> USB MODEM OFF <<< !\n");
             set_usb_switch_gpio(SWITCH_OE, GPIO_HI);    //close sw
             set_usb_switch_gpio(SWITCH_CONTROL, GPIO_LOW);  //sw to cp
             ssleep(2);
