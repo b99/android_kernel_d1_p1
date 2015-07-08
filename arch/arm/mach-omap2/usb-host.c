@@ -67,9 +67,7 @@ static struct usbhs_wakeup {
 	struct device *dev;
 	struct omap_hwmod *oh_ehci;
 	struct omap_hwmod *oh_ohci;
-	struct work_struct wakeup_work;
-	int wakeup_ehci:1;
-	int wakeup_ohci:1;
+	struct delayed_work wakeup_work;
 } *usbhs_wake;
 
 /* MUX settings for EHCI pins */
@@ -177,6 +175,21 @@ static struct omap_device_pad port1_tll_pads[] __initdata = {
 	},
 };
 
+static struct omap_device_pad port1_hsic_pads[] __initdata = {
+	{
+		.name = "usbb1_hsic_data.usbb1_hsic_data",
+		.flags  = OMAP_DEVICE_PAD_REMUX | OMAP_DEVICE_PAD_WAKEUP,
+		.enable = (OMAP_PIN_OUTPUT | OMAP_MUX_MODE0) & ~(OMAP_WAKEUP_EN),
+		.idle = OMAP_PIN_OUTPUT | OMAP_MUX_MODE0,
+	},
+	{
+		.name = "usbb1_hsic_strobe.usbb1_hsic_strobe",
+		.flags  = OMAP_DEVICE_PAD_REMUX | OMAP_DEVICE_PAD_WAKEUP,
+		.enable = (OMAP_PIN_OUTPUT | OMAP_MUX_MODE0) & ~(OMAP_WAKEUP_EN),
+		.idle = OMAP_PIN_OUTPUT | OMAP_MUX_MODE0,
+	},
+};
+
 static struct omap_device_pad port2_phy_pads[] __initdata = {
 	{
 		.name = "usbb2_ulpitll_stp.usbb2_ulpiphy_stp",
@@ -278,6 +291,21 @@ static struct omap_device_pad port2_tll_pads[] __initdata = {
 	{
 		.name = "usbb2_ulpitll_dat7.usbb2_ulpitll_dat7",
 		.enable = OMAP_PIN_INPUT_PULLDOWN | OMAP_MUX_MODE0,
+	},
+};
+
+static struct omap_device_pad port2_hsic_pads[] __initdata = {
+	{
+		.name = "usbb2_hsic_data.usbb2_hsic_data",
+		.flags  = OMAP_DEVICE_PAD_REMUX | OMAP_DEVICE_PAD_WAKEUP,
+		.enable = (OMAP_PIN_OUTPUT | OMAP_MUX_MODE0) & ~(OMAP_WAKEUP_EN),
+		.idle = OMAP_PIN_OUTPUT | OMAP_MUX_MODE0,
+	},
+	{
+		.name = "usbb2_hsic_strobe.usbb2_hsic_strobe",
+		.flags  = OMAP_DEVICE_PAD_REMUX | OMAP_DEVICE_PAD_WAKEUP,
+		.enable = (OMAP_PIN_OUTPUT | OMAP_MUX_MODE0) & ~(OMAP_WAKEUP_EN),
+		.idle = OMAP_PIN_OUTPUT | OMAP_MUX_MODE0,
 	},
 };
 
@@ -621,6 +649,23 @@ setup_4430ehci_io_mux(const enum usbhs_omap_port_mode *port_mode)
 			omap4_ctrl_pad_writel(val, OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_SMART2IO_PADCONF_2);
 		}
 			break;
+	case OMAP_EHCI_PORT_MODE_HSIC:
+		/*
+		 * HSIC pads have special register for setting up
+		 * OFF mode / PU / PD settings
+		 */
+		val = omap4_ctrl_pad_readl(OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_USBB_HSIC);
+		val &= ~OMAP4_USBB1_HSIC_DATA_OFFMODE_WD_ENABLE_MASK &
+				~OMAP4_USBB1_HSIC_STROBE_OFFMODE_WD_ENABLE_MASK;
+		val |= OMAP4_USBB1_HSIC_DATA_OFFMODE_WD_ENABLE_MASK |
+				OMAP4_USBB1_HSIC_STROBE_OFFMODE_WD_ENABLE_MASK |
+				(0x3 << OMAP4_USBB1_HSIC_DATA_OFFMODE_WD_SHIFT) |
+				(0x3 << OMAP4_USBB1_HSIC_STROBE_OFFMODE_WD_SHIFT);
+		omap4_ctrl_pad_writel(val, OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_USBB_HSIC);
+
+		pads = port1_hsic_pads;
+		pads_cnt = ARRAY_SIZE(port1_hsic_pads);
+			break;
 	case OMAP_USBHS_PORT_MODE_UNUSED:
 	default:
 			break;
@@ -640,6 +685,23 @@ setup_4430ehci_io_mux(const enum usbhs_omap_port_mode *port_mode)
 			val |= OMAP4_USBB2_DR0_DS_MASK;
 			omap4_ctrl_pad_writel(val, OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_SMART2IO_PADCONF_2);
 		}
+			break;
+	case OMAP_EHCI_PORT_MODE_HSIC:
+		/*
+		 * HSIC pads have special register for setting up
+		 * OFF mode / PU / PD settings
+		 */
+		val = omap4_ctrl_pad_readl(OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_USBB_HSIC);
+		val &= ~OMAP4_USBB2_HSIC_DATA_OFFMODE_WD_ENABLE_MASK &
+				~OMAP4_USBB2_HSIC_STROBE_OFFMODE_WD_ENABLE_MASK;
+		val |= OMAP4_USBB2_HSIC_DATA_OFFMODE_WD_ENABLE_MASK |
+				OMAP4_USBB2_HSIC_STROBE_OFFMODE_WD_ENABLE_MASK |
+				(0x3 << OMAP4_USBB2_HSIC_DATA_OFFMODE_WD_SHIFT) |
+				(0x3 << OMAP4_USBB2_HSIC_STROBE_OFFMODE_WD_SHIFT);
+		omap4_ctrl_pad_writel(val, OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_USBB_HSIC);
+
+		pads = port2_hsic_pads;
+		pads_cnt = ARRAY_SIZE(port2_hsic_pads);
 			break;
 	case OMAP_USBHS_PORT_MODE_UNUSED:
 	default:
@@ -830,36 +892,29 @@ void usbhs_wakeup()
 
 	if (test_bit(USB_OHCI_LOADED, &usb_hcds_loaded) &&
 	    omap_hwmod_pad_get_wakeup_status(usbhs_wake->oh_ohci) == true) {
-		usbhs_wake->wakeup_ohci = 1;
+		omap_hwmod_disable_ioring_wakeup(usbhs_wake->oh_ohci);
 		workq = 1;
 	}
 
 	if (test_bit(USB_EHCI_LOADED, &usb_hcds_loaded) &&
 	    omap_hwmod_pad_get_wakeup_status(usbhs_wake->oh_ehci) == true) {
-		usbhs_wake->wakeup_ehci = 1;
+		omap_hwmod_disable_ioring_wakeup(usbhs_wake->oh_ehci);
 		workq = 1;
 	}
 
-	if (workq)
-		queue_work(pm_wq, &usbhs_wake->wakeup_work);
+	if (workq) {
+		int queued;
+		queued = queue_delayed_work(pm_wq, &usbhs_wake->wakeup_work,
+				msecs_to_jiffies(20));
+		if (queued)
+			pm_runtime_get(usbhs_wake->dev);
+	}
 }
 
 static void usbhs_resume_work(struct work_struct *work)
 {
 	dev_dbg(usbhs_wake->dev, "USB IO PAD Wakeup event triggered\n");
-
-	if (usbhs_wake->wakeup_ehci) {
-		usbhs_wake->wakeup_ehci = 0;
-		omap_hwmod_disable_ioring_wakeup(usbhs_wake->oh_ehci);
-	}
-
-	if (usbhs_wake->wakeup_ohci) {
-		usbhs_wake->wakeup_ohci = 0;
-		omap_hwmod_disable_ioring_wakeup(usbhs_wake->oh_ohci);
-	}
-
-	if (pm_runtime_suspended(usbhs_wake->dev))
-		pm_runtime_get_sync(usbhs_wake->dev);
+	pm_runtime_put(usbhs_wake->dev);
 }
 
 void __init usbhs_init(const struct usbhs_omap_board_data *pdata)
@@ -931,13 +986,13 @@ void __init usbhs_init(const struct usbhs_omap_board_data *pdata)
 		return;
 	}
 
-	usbhs_wake = kmalloc(sizeof(*usbhs_wake), GFP_KERNEL);
+	usbhs_wake = kzalloc(sizeof(*usbhs_wake), GFP_KERNEL);
 	if (!usbhs_wake) {
 		pr_err("Could not allocate usbhs_wake\n");
 		return;
 	}
 
-	INIT_WORK(&usbhs_wake->wakeup_work, usbhs_resume_work);
+	INIT_DELAYED_WORK(&usbhs_wake->wakeup_work, usbhs_resume_work);
 	usbhs_wake->oh_ehci = oh[2];
 	usbhs_wake->oh_ohci = oh[1];
 	usbhs_wake->dev = &od->pdev.dev;
