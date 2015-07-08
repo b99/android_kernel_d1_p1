@@ -41,6 +41,8 @@
 
 #include "hsi_driver.h"
 
+#include <linux/debug_log.h>
+
 #define HSI_MODULENAME "omap_hsi"
 #define	HSI_DRIVER_VERSION	"0.4.3"
 #define HSI_RESETDONE_MAX_RETRIES	5 /* Max 5*L4 Read cycles waiting for */
