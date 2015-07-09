@@ -146,12 +146,12 @@ bool hsi_is_hsi_port_busy(struct hsi_port *pport)
 		hsr_mode = hsi_inl(hsi_ctrl->base, HSI_HSR_MODE_REG(pport->port_number));
 		if (cur_cawake &&
 			((hsr_mode & HSI_HSR_MODE_MODE_VAL_MASK) == HSI_MODE_SLEEP)) {
-			dev_warn(hsi_ctrl->dev, "CAWAKE high, but HSR in SLEEP. "
-						"HSR MODE 0x%x !\n", hsr_mode);
+//			dev_warn(hsi_ctrl->dev, "CAWAKE high, but HSR in SLEEP. "
+//						"HSR MODE 0x%x !\n", hsr_mode);
 			hsi_hsr_resume(hsi_ctrl);
 		} else if (!cur_cawake && (hsr_mode & HSI_HSR_MODE_MODE_VAL_MASK)) {
-			dev_warn(hsi_ctrl->dev, "CAWAKE low, but HSR not in SLEEP. "
-						"HSR MODE 0x%x !\n", hsr_mode);
+//			dev_warn(hsi_ctrl->dev, "CAWAKE low, but HSR not in SLEEP. "
+//						"HSR MODE 0x%x !\n", hsr_mode);
 			hsi_hsr_suspend(hsi_ctrl);
 		}
 	}
