@@ -12,9 +12,6 @@
  * published by the Free Software Foundation.
  */
 
-/*============================================================================
-Problem NO.         Name        Time         Reason
-==============================================================================*/
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -490,21 +487,12 @@ static void _disable_gpio_irqbank(struct gpio_bank *bank, int gpio_mask)
 	__raw_writel(l, reg);
 }
 
-#define TOUCH_OMAP4430_INT_GPIO 35
-
 static inline void _set_gpio_irqenable(struct gpio_bank *bank, int gpio, int enable)
 {
-       if(gpio == TOUCH_OMAP4430_INT_GPIO)
-       {
-       	   if (enable)
+	if (enable)
 		_enable_gpio_irqbank(bank, GPIO_BIT(bank, gpio));
-	   else
+	else
 		_disable_gpio_irqbank(bank, GPIO_BIT(bank, gpio));
-       }
-       else
-       {
-	    _enable_gpio_irqbank(bank, GPIO_BIT(bank, gpio));
-       }
 }
 
 /*
