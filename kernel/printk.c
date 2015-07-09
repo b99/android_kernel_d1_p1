@@ -15,9 +15,7 @@
  * Rewrote bits to get rid of console_lock
  *	01Mar01 Andrew Morton
  */
-/* ===========================================================================
-author     when         DTS number         descriptions
-=============================================================================*/
+
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/tty.h>
@@ -995,11 +993,7 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 
 				t = cpu_clock(printk_cpu);
 				nanosec_rem = do_div(t, 1000000000);
-#if 0
 				tlen = sprintf(tbuf, "[%5lu.%06lu] ",
-#else
-				tlen = sprintf(tbuf, "[%d, %s] [%5lu.%06lu] ", current->pid, current->comm,
-#endif	
 						(unsigned long) t,
 						nanosec_rem / 1000);
 
