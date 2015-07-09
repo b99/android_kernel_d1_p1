@@ -11,7 +11,7 @@
  * published by the Free Software Foundation.
  */
 #include <mach/emif.h>
-#include <mach/lpddr2-elpida.h>
+#include <mach/lpddr2-samsung.h>
 
 const struct lpddr2_timings timings_samsung_400_mhz = {
 	.max_freq	= 400000000,
