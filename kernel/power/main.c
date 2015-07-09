@@ -307,26 +307,6 @@ pm_trace_dev_match_store(struct kobject *kobj, struct kobj_attribute *attr,
 power_attr(pm_trace_dev_match);
 
 #endif /* CONFIG_PM_TRACE */
-extern struct task_struct * current_task;
-
-static ssize_t earlystack_show(struct kobject *kobj,
-				       struct kobj_attribute *attr,
-				       char *buf)
-{
-    int str_size =0;
-
-
-
-    show_stack(current_task,NULL);
-    return str_size;
-}
-static ssize_t
-earlystack_store(struct kobject *kobj, struct kobj_attribute *attr,
-			 const char *buf, size_t n)
-{
-	return -EINVAL;
-}
-power_attr(earlystack);
 
 #ifdef CONFIG_USER_WAKELOCK
 power_attr(wake_lock);
@@ -350,7 +330,6 @@ static struct attribute * g[] = {
 	&wake_unlock_attr.attr,
 #endif
 #endif
-	&earlystack_attr.attr,
 	NULL,
 };
 
