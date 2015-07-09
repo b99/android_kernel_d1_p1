@@ -2,7 +2,6 @@
  * Generic helpers for smp ipi calls
  *
  * (C) Jens Axboe <jens.axboe@oracle.com> 2008
- *  DTS               author    date      descriptation
  */
 #include <linux/rcupdate.h>
 #include <linux/rculist.h>
@@ -330,8 +329,7 @@ int smp_call_function_single(int cpu, smp_call_func_t func, void *info,
 		func(info);
 		local_irq_restore(flags);
 	} else {
-		if ((unsigned)cpu < nr_cpu_ids && cpu_online(cpu)
-						&& cpu_active(cpu)) {
+		if ((unsigned)cpu < nr_cpu_ids && cpu_online(cpu)) {
 			struct call_single_data *data = &d;
 
 			if (!wait)
