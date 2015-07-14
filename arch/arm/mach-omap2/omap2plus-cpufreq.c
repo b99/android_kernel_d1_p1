@@ -489,6 +489,18 @@ static int omap_cpu_exit(struct cpufreq_policy *policy)
 	return 0;
 }
 
+static ssize_t show_iva_clock(struct cpufreq_policy *policy, char *buf) {
+        struct clk *clk = clk_get(NULL, "dpll_iva_m5x2_ck");
+        return sprintf(buf, "%lu\n", clk->rate/1000);
+}
+
+static struct freq_attr iva_clock = {
+    .attr = {.name = "iva_cur_freq",
+             .mode=0644,
+    },
+    .show = show_iva_clock,
+};
+
 /*
  * Variable GPU OC - sysfs interface for cycling through different GPU top speeds
  * Author: imoseyon@gmail.com
@@ -535,6 +547,7 @@ static struct freq_attr gpu_oc = {
 static struct freq_attr *omap_cpufreq_attr[] = {
 	&cpufreq_freq_attr_scaling_available_freqs,
 	&gpu_oc,
+	&iva_clock,
 	NULL,
 };
 
