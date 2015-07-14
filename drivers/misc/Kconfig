@@ -574,9 +574,15 @@ source "drivers/misc/gcx/gcioctl/Kconfig"
 source "drivers/misc/gcx/gcbv/Kconfig"
 source "drivers/misc/cache-2dmanager/Kconfig"
 
+config SOUND_CONTROL
+	bool "Enable support for Sound Control"
+	default n
+	help
+	  Enable support for Sound Control
+
 config CUSTOM_VOLTAGE
 	bool "Support for Custom Voltage"
-	default y
+	default n
 	help
 	  Say Y here to enable Custom Voltage
 

@@ -47,6 +47,10 @@
 
 #include "dvfs.h"
 
+#ifdef CONFIG_CUSTOM_VOLTAGE
+#include <linux/custom_voltage.h>
+#endif
+
 #ifdef CONFIG_SMP
 struct lpj_info {
 	unsigned long	ref;
@@ -72,12 +76,6 @@ static bool omap_cpufreq_ready;
 static bool omap_cpufreq_suspended;
 
 static int oc_val;
-
-#ifdef CONFIG_CUSTOM_VOLTAGE
-extern void customvoltage_register_freqtable(struct cpufreq_frequency_table * freq_table);
-extern void customvoltage_register_freqmutex(struct mutex * freq_mutex);
-extern void customvoltage_init(void);
-#endif
 
 static unsigned int omap_getspeed(unsigned int cpu)
 {
@@ -175,7 +173,7 @@ static unsigned int omap_thermal_lower_speed(void)
 	unsigned int curr;
 	int i;
 
-	curr = max_thermal;
+	curr = omap_getspeed(0);
 
 	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++)
 		if (freq_table[i].frequency > max &&
@@ -372,12 +370,6 @@ static int cpufreq_apply_cooling(struct thermal_dev *dev,
 
 	current_cooling_level = cooling_level;
 
-#ifdef CONFIG_CUSTOM_VOLTAGE
-	customvoltage_register_freqtable(freq_table);
-	customvoltage_register_freqmutex(&omap_cpufreq_lock);
-	customvoltage_init();
-#endif
-
 	return 0;
 }
 #endif
@@ -485,6 +477,10 @@ static int __cpuinit omap_cpu_init(struct cpufreq_policy *policy)
 	/* FIXME: what's the actual transition time? */
 	policy->cpuinfo.transition_latency = 300 * 1000;
 
+#ifdef CONFIG_CUSTOM_VOLTAGE
+	customvoltage_register_freqmutex(&omap_cpufreq_lock);
+#endif
+
 	return 0;
 
 fail_table:
@@ -501,28 +497,17 @@ static int omap_cpu_exit(struct cpufreq_policy *policy)
 	return 0;
 }
 
-#ifdef CONFIG_CUSTOM_VOLTAGE
-extern ssize_t customvoltage_voltages_read(struct device * dev, struct device_attribute * attr, char * buf);
-extern ssize_t customvoltage_voltages_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size);
-
-static ssize_t show_UV_mV_table(struct cpufreq_policy * policy, char * buf)
-{
-    return customvoltage_voltages_read(NULL, NULL, buf);
+static ssize_t show_iva_clock(struct cpufreq_policy *policy, char *buf) {
+        struct clk *clk = clk_get(NULL, "dpll_iva_m5x2_ck");
+        return sprintf(buf, "%lu\n", clk->rate/1000);
 }
 
-static ssize_t store_UV_mV_table(struct cpufreq_policy * policy, const char * buf, size_t count)
-{
-    return customvoltage_voltages_write(NULL, NULL, buf, count);
-}
-
-static struct freq_attr omap_UV_mV_table = {
-    .attr = {.name = "UV_mV_table",
-         .mode=0644,
+static struct freq_attr iva_clock = {
+    .attr = {.name = "iva_cur_freq",
+             .mode=0644,
     },
-    .show = show_UV_mV_table,
-    .store = store_UV_mV_table,
+    .show = show_iva_clock,
 };
-#endif
 
 /*
  * Variable GPU OC - sysfs interface for cycling through different GPU top speeds
@@ -566,10 +551,30 @@ static struct freq_attr gpu_oc = {
 	.store = store_gpu_oc,
 };
 
+#ifdef CONFIG_CUSTOM_VOLTAGE
+static ssize_t show_UV_mV_table(struct cpufreq_policy * policy, char * buf)
+{
+    return customvoltage_mpuvolt_read(NULL, NULL, buf);
+}
+
+static ssize_t store_UV_mV_table(struct cpufreq_policy * policy, const char * buf, size_t count)
+{
+    return customvoltage_mpuvolt_write(NULL, NULL, buf, count);
+}
+
+static struct freq_attr omap_UV_mV_table = {
+    .attr = {.name = "UV_mV_table",
+	     .mode=0644,
+    },
+    .show = show_UV_mV_table,
+    .store = store_UV_mV_table,
+};
+#endif
 
 static struct freq_attr *omap_cpufreq_attr[] = {
 	&cpufreq_freq_attr_scaling_available_freqs,
 	&gpu_oc,
+	&iva_clock,
 #ifdef CONFIG_CUSTOM_VOLTAGE
 	&omap_UV_mV_table,
 #endif
