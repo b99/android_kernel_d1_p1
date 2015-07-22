@@ -3936,6 +3936,11 @@ static struct omap_hwmod_ocp_if *omap44xx_mcbsp1_slaves[] = {
 	&omap44xx_l4_abe__mcbsp1_dma,
 };
 
+static struct omap_hwmod_opt_clk mcbsp1_opt_clks[] = {
+	{ .role = "pad_fck", .clk = "pad_clks_ck" },
+	{ .role = "prcm_clk", .clk = "mcbsp1_sync_mux_ck" },
+};
+
 static struct omap_hwmod omap44xx_mcbsp1_hwmod = {
 	.name		= "mcbsp1",
 	.class		= &omap44xx_mcbsp_hwmod_class,
@@ -3951,7 +3956,10 @@ static struct omap_hwmod omap44xx_mcbsp1_hwmod = {
 	},
 	.slaves		= omap44xx_mcbsp1_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap44xx_mcbsp1_slaves),
+	.opt_clks	= mcbsp1_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(mcbsp1_opt_clks),
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP44XX),
+
 };
 
 /* mcbsp2 */
@@ -4010,6 +4018,11 @@ static struct omap_hwmod_ocp_if *omap44xx_mcbsp2_slaves[] = {
 	&omap44xx_l4_abe__mcbsp2_dma,
 };
 
+static struct omap_hwmod_opt_clk mcbsp2_opt_clks[] = {
+	{ .role = "pad_fck", .clk = "pad_clks_ck" },
+	{ .role = "prcm_clk", .clk = "mcbsp2_sync_mux_ck" },
+};
+
 static struct omap_hwmod omap44xx_mcbsp2_hwmod = {
 	.name		= "mcbsp2",
 	.class		= &omap44xx_mcbsp_hwmod_class,
@@ -4025,6 +4038,8 @@ static struct omap_hwmod omap44xx_mcbsp2_hwmod = {
 	},
 	.slaves		= omap44xx_mcbsp2_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap44xx_mcbsp2_slaves),
+	.opt_clks	= mcbsp2_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(mcbsp2_opt_clks),
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP44XX),
 };
 
@@ -4084,6 +4099,11 @@ static struct omap_hwmod_ocp_if *omap44xx_mcbsp3_slaves[] = {
 	&omap44xx_l4_abe__mcbsp3_dma,
 };
 
+static struct omap_hwmod_opt_clk mcbsp3_opt_clks[] = {
+	{ .role = "pad_fck", .clk = "pad_clks_ck" },
+	{ .role = "prcm_clk", .clk = "mcbsp3_sync_mux_ck" },
+};
+
 static struct omap_hwmod omap44xx_mcbsp3_hwmod = {
 	.name		= "mcbsp3",
 	.class		= &omap44xx_mcbsp_hwmod_class,
@@ -4099,6 +4119,8 @@ static struct omap_hwmod omap44xx_mcbsp3_hwmod = {
 	},
 	.slaves		= omap44xx_mcbsp3_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap44xx_mcbsp3_slaves),
+	.opt_clks	= mcbsp3_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(mcbsp3_opt_clks),
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP44XX),
 };
 
@@ -4137,6 +4159,11 @@ static struct omap_hwmod_ocp_if *omap44xx_mcbsp4_slaves[] = {
 	&omap44xx_l4_per__mcbsp4,
 };
 
+static struct omap_hwmod_opt_clk mcbsp4_opt_clks[] = {
+	{ .role = "pad_fck", .clk = "pad_clks_ck" },
+	{ .role = "prcm_clk", .clk = "mcbsp4_sync_mux_ck" },
+};
+
 static struct omap_hwmod omap44xx_mcbsp4_hwmod = {
 	.name		= "mcbsp4",
 	.class		= &omap44xx_mcbsp_hwmod_class,
@@ -4152,6 +4179,8 @@ static struct omap_hwmod omap44xx_mcbsp4_hwmod = {
 	},
 	.slaves		= omap44xx_mcbsp4_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap44xx_mcbsp4_slaves),
+	.opt_clks	= mcbsp4_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(mcbsp4_opt_clks),
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP44XX),
 };
 
@@ -4917,11 +4946,6 @@ static struct omap_hwmod_class omap44xx_timer_hwmod_class = {
 	.name	= "timer",
 	.sysc	= &omap44xx_timer_sysc,
 	.rev	= OMAP_TIMER_IP_VERSION_2,
-};
-
-/* secure timer can assign this to .dev_attr field */
-static struct omap_secure_timer_dev_attr secure_timer_dev_attr = {
-	.is_secure_timer        = true,
 };
 
 /* timer1 */
