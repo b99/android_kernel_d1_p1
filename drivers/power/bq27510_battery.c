@@ -604,7 +604,7 @@ static ssize_t bq27510_check_qmax(struct device_driver *driver, char *buf)
 
 static ssize_t bq27510_get_capacity(struct device_driver *driver, char *buf)
 {
-    int design_capacity = 1670;
+    int design_capacity = 1800;
 
     if (!get_hw_config_int("gas_gauge/capacity", &design_capacity, NULL))
         printk(KERN_ERR "[%s,%d] gas gauge capacity required in hw_configs.xml\n",__FUNCTION__,__LINE__);

@@ -46,7 +46,7 @@
    <config name="charge_voltage" value="4200" type="int" />
    <config name="charge_current" value="1000" type="int" />
    <config name="version" value="0x14400a4" type="int" />
-   <config name="capacity" value="1670" type="int" />
+   <config name="capacity" value="1800" type="int" />
 </module>
 <module name="sdcard">
    <config name="sw_fc" value="0" type="int" />
