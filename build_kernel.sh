@@ -15,7 +15,7 @@
 export ARCH=arm
 export SUBARCH=arm
 export CROSS_COMPILE=~/AndroidSources/linaro-4.9.4-a9/bin/arm-eabi-
-export LOCALVERSION="-next"
+export LOCALVERSION="-cm12x"
 export CCACHE_DIR=~/.ccache/front-kernel
 export MY_CONFIG=front_defconfig
 ccache -M 5G
