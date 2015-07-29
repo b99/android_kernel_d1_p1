@@ -591,6 +591,20 @@ const struct clkops clkops_null = {
 };
 
 /*
+ * Dummy functions used for virtual dummy clocks
+ */
+long clk_dummy_round_rate(struct clk *clk, unsigned long rate)
+{
+	return rate;
+};
+
+int clk_dummy_set_rate(struct clk *clk, unsigned long rate)
+{
+	clk->rate = rate;
+	return 0;
+};
+
+/*
  * Dummy clock
  *
  * Used for clock aliases that are needed on some OMAPs, but not others
@@ -599,32 +613,6 @@ struct clk dummy_ck = {
 	.name	= "dummy",
 	.ops	= &clkops_null,
 };
-
-#ifdef CONFIG_CPU_FREQ
-void clk_init_cpufreq_table(struct cpufreq_frequency_table **table)
-{
-	unsigned long flags;
-
-	if (!arch_clock || !arch_clock->clk_init_cpufreq_table)
-		return;
-
-	spin_lock_irqsave(&clockfw_lock, flags);
-	arch_clock->clk_init_cpufreq_table(table);
-	spin_unlock_irqrestore(&clockfw_lock, flags);
-}
-
-void clk_exit_cpufreq_table(struct cpufreq_frequency_table **table)
-{
-	unsigned long flags;
-
-	if (!arch_clock || !arch_clock->clk_exit_cpufreq_table)
-		return;
-
-	spin_lock_irqsave(&clockfw_lock, flags);
-	arch_clock->clk_exit_cpufreq_table(table);
-	spin_unlock_irqrestore(&clockfw_lock, flags);
-}
-#endif
 
 /*
  *

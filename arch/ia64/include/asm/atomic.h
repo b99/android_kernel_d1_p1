@@ -18,8 +18,8 @@
 #include <asm/system.h>
 
 
-#define ATOMIC_INIT(i)		((atomic_t) { (i) })
-#define ATOMIC64_INIT(i)	((atomic64_t) { (i) })
+#define ATOMIC_INIT(i)		{ (i) }
+#define ATOMIC64_INIT(i)	{ (i) }
 
 #define atomic_read(v)		(*(volatile int *)&(v)->counter)
 #define atomic64_read(v)	(*(volatile long *)&(v)->counter)
@@ -105,7 +105,6 @@ static __inline__ int atomic_add_unless(atomic_t *v, int a, int u)
 	return c != (u);
 }
 
-#define atomic_inc_not_zero(v) atomic_add_unless((v), 1, 0)
 
 static __inline__ long atomic64_add_unless(atomic64_t *v, long a, long u)
 {

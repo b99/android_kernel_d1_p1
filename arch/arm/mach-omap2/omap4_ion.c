@@ -201,10 +201,10 @@ void __init omap_ion_init(void)
 	for (i = 0; i < omap4_ion_data.nr; i++)
 		if (omap4_ion_data.heaps[i].type == ION_HEAP_TYPE_CARVEOUT ||
 		    omap4_ion_data.heaps[i].type == OMAP_ION_HEAP_TYPE_TILER) {
-			if (!omap4_ion_data.heaps[i].size)
-				continue;
 			ret = memblock_remove(omap4_ion_data.heaps[i].base,
 					      omap4_ion_data.heaps[i].size);
+			if (!omap4_ion_data.heaps[i].size)
+				continue;
 			if (omap4_ion_data.heaps[i].id ==
 					OMAP_ION_HEAP_SECURE_OUTPUT_WFDHDCP) {
 				/* Reducing the actual size being mapped for Ion/Ducati as

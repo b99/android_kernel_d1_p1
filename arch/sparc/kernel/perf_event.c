@@ -22,7 +22,7 @@
 #include <asm/stacktrace.h>
 #include <asm/cpudata.h>
 #include <asm/uaccess.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <asm/nmi.h>
 #include <asm/pcr.h>
 
@@ -1277,7 +1277,7 @@ static int __kprobes perf_event_nmi_handler(struct notifier_block *self,
 		if (!sparc_perf_event_set_period(event, hwc, idx))
 			continue;
 
-		if (perf_event_overflow(event, 1, &data, regs))
+		if (perf_event_overflow(event, &data, regs))
 			sparc_pmu_stop(event, 0);
 	}
 

@@ -243,7 +243,6 @@ static struct inode *mqueue_alloc_inode(struct super_block *sb)
 static void mqueue_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
-	INIT_LIST_HEAD(&inode->i_dentry);
 	kmem_cache_free(mqueue_inode_cachep, MQUEUE_I(inode));
 }
 
@@ -680,7 +679,7 @@ err:
 	return ERR_PTR(ret);
 }
 
-SYSCALL_DEFINE4(mq_open, const char __user *, u_name, int, oflag, mode_t, mode,
+SYSCALL_DEFINE4(mq_open, const char __user *, u_name, int, oflag, umode_t, mode,
 		struct mq_attr __user *, u_attr)
 {
 	struct dentry *dentry;

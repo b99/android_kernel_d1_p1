@@ -356,7 +356,9 @@ found:
 			return -ENOMEM;
 
 		*paddr = start;
-		//_omap_vram_clear(start, pages);
+
+		_omap_vram_clear(start, pages);
+
 		return 0;
 	}
 

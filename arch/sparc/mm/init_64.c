@@ -790,7 +790,7 @@ static int find_node(unsigned long addr)
 	return -1;
 }
 
-u64 memblock_nid_range(u64 start, u64 end, int *nid)
+static u64 memblock_nid_range(u64 start, u64 end, int *nid)
 {
 	*nid = find_node(start);
 	start += PAGE_SIZE;
@@ -808,7 +808,7 @@ u64 memblock_nid_range(u64 start, u64 end, int *nid)
 	return start;
 }
 #else
-u64 memblock_nid_range(u64 start, u64 end, int *nid)
+static u64 memblock_nid_range(u64 start, u64 end, int *nid)
 {
 	*nid = 0;
 	return end;
@@ -1769,8 +1769,6 @@ void __init paging_init(void)
 		sun4v_ktsb_init();
 	}
 
-	memblock_init();
-
 	/* Find available physical memory...
 	 *
 	 * Read it twice in order to work around a bug in openfirmware.
@@ -1796,7 +1794,7 @@ void __init paging_init(void)
 
 	memblock_enforce_memory_limit(cmdline_memory_size);
 
-	memblock_analyze();
+	memblock_allow_resize();
 	memblock_dump_all();
 
 	set_bit(0, mmu_context_bmap);

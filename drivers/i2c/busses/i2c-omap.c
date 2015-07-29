@@ -45,7 +45,7 @@
 #include <linux/hwspinlock.h>
 #include <linux/i2c-omap.h>
 #include <linux/pm_runtime.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 
 #ifdef CONFIG_OMAP4_DPLL_CASCADING
 #include <linux/notifier.h>
@@ -666,6 +666,7 @@ static int omap_i2c_xfer_msg(struct i2c_adapter *adap,
 			w |= OMAP_I2C_CON_STP;
 			omap_i2c_write_reg(dev, OMAP_I2C_CON_REG, w);
 		}
+		omap_i2c_init(dev);
 		return -EREMOTEIO;
 	}
 	return -EIO;

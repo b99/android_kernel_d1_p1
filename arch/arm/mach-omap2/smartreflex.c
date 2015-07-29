@@ -34,6 +34,7 @@
 #include "pm.h"
 #include "dvfs.h"
 #include "smartreflex.h"
+#include "voltage.h"
 
 #define SMARTREFLEX_NAME_LEN	16
 #define NVALUE_NAME_LEN		40
@@ -71,6 +72,14 @@ static LIST_HEAD(sr_list);
 static struct omap_sr_class_data *sr_class;
 static struct omap_sr_pmic_data *sr_pmic_data;
 static struct dentry		*sr_dbg_dir;
+
+static u32 mpumin = OMAP4_VP_MPU_VLIMITTO_VDDMIN;
+static u32 ivamin = OMAP4_VP_IVA_VLIMITTO_VDDMIN;
+static u32 coremin = OMAP4_VP_CORE_VLIMITTO_VDDMIN;
+bool enable_highvolt_sr = 0;
+
+#define LOWFLOOR 700000
+#define LOWCEILING 1000000
 
 static inline void sr_write_reg(struct omap_sr *sr, unsigned offset, u32 value)
 {
@@ -638,6 +647,9 @@ int sr_disable_errgen(struct voltagedomain *voltdm)
 			__func__, voltdm->name);
 		return -EINVAL;
 	}
+	/* Check if SR clocks are already disabled. If yes do nothing */
+	if (pm_runtime_suspended(&sr->pdev->dev))
+		return 0;
 
 	if (sr->ip_type == SR_TYPE_V1) {
 		errconfig_offs = ERRCONFIG_V1;
@@ -1065,7 +1077,134 @@ void omap_sr_register_pmic(struct omap_sr_pmic_data *pmic_data)
 	sr_pmic_data = pmic_data;
 }
 
-/* PM Debug Fs enteries to enable disable smartreflex. */
+/**
+ * Debug Fs enteries to tune smartreflex. 
+ * author: imoseyon@gmail.com
+ * 
+ * code needs to be cleaned up still.
+ */
+static int omap_sr_highvolt_show(void *data, u64 *val)
+{
+	struct omap_sr *sr_info = (struct omap_sr *) data;
+
+	if (!sr_info) {
+		pr_warning("%s: omap_sr struct not found\n", __func__);
+		return -EINVAL;
+	}
+
+	*val = enable_highvolt_sr;
+
+	return 0;
+}
+static int omap_sr_vmin_show(void *data, u64 *val)
+{
+	struct omap_sr *sr = (struct omap_sr *) data;
+
+	if (!sr) {
+		pr_warning("%s: omap_sr struct not found\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!sr) {
+		pr_warning("%s: omap_sr struct not found\n", __func__);
+		return -EINVAL;
+	}
+
+        if (!(strcmp(sr->voltdm->name, "mpu"))) *val = mpumin;
+        else if (!(strcmp(sr->voltdm->name, "iva"))) *val = ivamin;
+        else if (!(strcmp(sr->voltdm->name, "core"))) *val = coremin;
+	return 0;
+}
+
+static int omap_sr_highvolt_store(void *data, u64 val)
+{
+	struct omap_sr *sr_info = (struct omap_sr *) data;
+
+	if (!sr_info) {
+		pr_warning("%s: omap_sr struct not found\n", __func__);
+		return -EINVAL;
+	}
+	/* Sanity check */
+	if (val && (val != 1)) {
+		pr_warning("%s: Invalid argument %lld\n", __func__, val);
+		return -EINVAL;
+	}
+
+	/* control enable/disable only if there is a delta in value */
+	if (enable_highvolt_sr != val) {
+		enable_highvolt_sr = val;
+		sr_stop_vddautocomp(sr_info);
+		sr_start_vddautocomp(sr_info);
+	}
+	return 0;
+}
+
+static int omap_sr_vmin_store(void *data, u64 val)
+{
+        struct omap_sr *sr_info = (struct omap_sr *) data;
+        struct omap_vp_instance *vp;
+	u32 val2, sys_clk_rate, timeout, vddmax, lowfloor, lowceiling, vddmin, srtype;
+	lowfloor=LOWFLOOR;
+	lowceiling=LOWCEILING;
+
+        if (!sr_info) {
+                pr_warning("%s: omap_sr struct not found\n", __func__);
+                return -EINVAL;
+        }
+
+        if (!(strcmp(sr_info->voltdm->name, "mpu"))) srtype=1;
+        else if (!(strcmp(sr_info->voltdm->name, "iva"))) srtype=2;
+        else if (!(strcmp(sr_info->voltdm->name, "core"))) srtype=3;
+	else return -EINVAL;
+
+        if (srtype==1) vddmax=sr_info->voltdm->pmic->uv_to_vsel(OMAP4460_VP_MPU_VLIMITTO_VDDMAX);
+        else if (srtype==2) vddmax=sr_info->voltdm->pmic->uv_to_vsel(OMAP4460_VP_IVA_VLIMITTO_VDDMAX);
+        else vddmax=sr_info->voltdm->pmic->uv_to_vsel(OMAP4460_VP_CORE_VLIMITTO_VDDMAX);
+
+	vp = sr_info->voltdm->vp;
+
+	if (val == 0) {
+	  if (srtype==1) {
+		vddmin = sr_info->voltdm->pmic->uv_to_vsel(OMAP4_VP_MPU_VLIMITTO_VDDMIN);
+		mpumin = OMAP4_VP_MPU_VLIMITTO_VDDMIN;
+	  } else if (srtype==2) {
+		vddmin = sr_info->voltdm->pmic->uv_to_vsel(OMAP4_VP_IVA_VLIMITTO_VDDMIN);
+		ivamin = OMAP4_VP_IVA_VLIMITTO_VDDMIN;
+	  } else {
+		vddmin = sr_info->voltdm->pmic->uv_to_vsel(OMAP4_VP_CORE_VLIMITTO_VDDMIN);
+		coremin = OMAP4_VP_CORE_VLIMITTO_VDDMIN;
+	  }
+	} else if (val < lowfloor) {
+		vddmin = sr_info->voltdm->pmic->uv_to_vsel(lowfloor);
+		if (srtype==1) mpumin = lowfloor;
+		else if (srtype==2) ivamin = lowfloor;
+		else coremin = lowfloor;
+	} else if (val > lowceiling) {
+		vddmin = sr_info->voltdm->pmic->uv_to_vsel(lowceiling);
+		if (srtype==1) mpumin = lowceiling;
+		else if (srtype==2) ivamin = lowceiling;
+		else coremin = lowceiling;
+	} else {
+		vddmin = sr_info->voltdm->pmic->uv_to_vsel(val);
+		if (srtype==1) mpumin = val;
+		else if (srtype==2) ivamin = val;
+		else coremin = val;
+	}
+
+        sys_clk_rate = sr_info->voltdm->sys_clk.rate / 1000;
+        timeout = (sys_clk_rate * sr_info->voltdm->pmic->vp_timeout_us) / 1000;
+
+        val2 = (vddmax << vp->common->vlimitto_vddmax_shift) |
+                (vddmin << vp->common->vlimitto_vddmin_shift) |
+                (timeout <<  vp->common->vlimitto_timeout_shift);
+        sr_info->voltdm->write(val2, vp->vlimitto);
+
+        sr_stop_vddautocomp(sr_info);
+        sr_start_vddautocomp(sr_info);
+	return 0;
+}
+
+/* PM Debug FS entries to enable and disable smartreflex. */
 static int omap_sr_autocomp_show(void *data, u64 *val)
 {
 	struct omap_sr *sr_info = (struct omap_sr *) data;
@@ -1107,7 +1246,11 @@ static int omap_sr_autocomp_store(void *data, u64 val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(pm_sr_fops, omap_sr_autocomp_show,
-		omap_sr_autocomp_store, "%llu\n");
+			omap_sr_autocomp_store, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(pm_sr_fops2, omap_sr_vmin_show,
+		omap_sr_vmin_store, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(pm_sr_fops3, omap_sr_highvolt_show,
+		omap_sr_highvolt_store, "%llu\n");
 
 static int __init omap_sr_probe(struct platform_device *pdev)
 {
@@ -1188,6 +1331,8 @@ static int __init omap_sr_probe(struct platform_device *pdev)
 	}
 
 	dev_info(&pdev->dev, "%s: SmartReflex driver initialized\n", __func__);
+
+#ifdef CONFIG_DEBUG_FS
 	if (!sr_dbg_dir) {
 		sr_dbg_dir = debugfs_create_dir("smartreflex", NULL);
 		if (!sr_dbg_dir) {
@@ -1216,6 +1361,10 @@ static int __init omap_sr_probe(struct platform_device *pdev)
 
 	(void) debugfs_create_file("autocomp", S_IRUGO | S_IWUSR,
 			sr_info->dbg_dir, (void *)sr_info, &pm_sr_fops);
+	(void) debugfs_create_file("vmin", S_IRUGO | S_IWUSR,
+			sr_info->dbg_dir, (void *)sr_info, &pm_sr_fops2);
+	(void) debugfs_create_file("enable_highvolt", S_IRUGO | S_IWUSR,
+			sr_info->dbg_dir, (void *)sr_info, &pm_sr_fops3);
 	(void) debugfs_create_x32("errweight", S_IRUGO, sr_info->dbg_dir,
 			&sr_info->err_weight);
 	(void) debugfs_create_x32("errmaxlimit", S_IRUGO, sr_info->dbg_dir,
@@ -1249,11 +1398,13 @@ static int __init omap_sr_probe(struct platform_device *pdev)
 		(void) debugfs_create_x32(name, S_IRUGO | S_IWUSR, nvalue_dir,
 				&(sr_info->nvalue_table[i].nvalue));
 	}
-
+#endif
 	return ret;
 
+#ifdef CONFIG_DEBUG_FS
 err_debugfs:
 	debugfs_remove_recursive(sr_info->dbg_dir);
+#endif
 err_iounmap:
 	list_del(&sr_info->node);
 	iounmap(sr_info->base);

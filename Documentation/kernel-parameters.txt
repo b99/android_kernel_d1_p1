@@ -546,6 +546,9 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
 			/proc/<pid>/coredump_filter.
 			See also Documentation/filesystems/proc.txt.
 
+	cpuidle.off=1	[CPU_IDLE]
+			disable the cpuidle sub-system
+
 	cpcihp_generic=	[HW,PCI] Generic port I/O CompactPCI driver
 			Format:
 			<first_slot>,<last_slot>,<port>,<enum_bit>[,<debug>]
@@ -1763,6 +1766,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
 			with UP alternatives
 
 	noresidual	[PPC] Don't use residual data on PReP machines.
+
+	nordrand	[X86] Disable the direct use of the RDRAND
+			instruction even if it is supported by the
+			processor.  RDRAND is still available to user
+			space applications.
 
 	noresume	[SWSUSP] Disables resume and restores original swap
 			space.

@@ -15,9 +15,7 @@
  * Rewrote bits to get rid of console_lock
  *	01Mar01 Andrew Morton
  */
-/* ===========================================================================
-author     when         DTS number         descriptions
-=============================================================================*/
+
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/tty.h>
@@ -205,7 +203,7 @@ void __init setup_log_buf(int early)
 		unsigned long mem;
 
 		mem = memblock_alloc(new_log_buf_len, PAGE_SIZE);
-		if (mem == MEMBLOCK_ERROR)
+		if (!mem)
 			return;
 		new_log_buf = __va(mem);
 	} else {
@@ -686,8 +684,19 @@ static void call_console_drivers(unsigned start, unsigned end)
 	start_print = start;
 	while (cur_index != end) {
 		if (msg_level < 0 && ((end - cur_index) > 2)) {
+			/*
+			 * prepare buf_prefix, as a contiguous array,
+			 * to be processed by log_prefix function
+			 */
+			char buf_prefix[SYSLOG_PRI_MAX_LENGTH+1];
+			unsigned i;
+			for (i = 0; i < ((end - cur_index)) && (i < SYSLOG_PRI_MAX_LENGTH); i++) {
+				buf_prefix[i] = LOG_BUF(cur_index + i);
+			}
+			buf_prefix[i] = '\0'; /* force '\0' as last string character */
+
 			/* strip log prefix */
-			cur_index += log_prefix(&LOG_BUF(cur_index), &msg_level, NULL);
+			cur_index += log_prefix((const char *)&buf_prefix, &msg_level, NULL);
 			start_print = cur_index;
 		}
 		while (cur_index != end) {
@@ -984,11 +993,7 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 
 				t = cpu_clock(printk_cpu);
 				nanosec_rem = do_div(t, 1000000000);
-#if 0
 				tlen = sprintf(tbuf, "[%5lu.%06lu] ",
-#else
-				tlen = sprintf(tbuf, "[%d, %s] [%5lu.%06lu] ", current->pid, current->comm,
-#endif	
 						(unsigned long) t,
 						nanosec_rem / 1000);
 

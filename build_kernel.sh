@@ -14,9 +14,10 @@
 ##############################################################################
 export ARCH=arm
 export SUBARCH=arm
-export CROSS_COMPILE=~/AndroidSources/linaro-4.9.3-a9/bin/arm-eabi-
-export LOCALVERSION="-31_stable"
-export CCACHE_DIR=~/.ccache/kernel31
+export CROSS_COMPILE=~/AndroidSources/linaro-4.9.4-a9/bin/arm-eabi-
+export LOCALVERSION="-next"
+export USE_CCACHE=1
+export CCACHE_DIR=~/.ccache/front-kernel
 export MY_CONFIG=front_defconfig
 ccache -M 5G
 
@@ -52,7 +53,7 @@ then
     if [ ! "$SGX_MODULE" ]
     then
         make clean -C $KERNELDIR/pvr-source/eurasiacon/build/linux2/omap4430_android
-        cp $KERNELDIR/drivers/video/omap2/omapfb/omapfb.h $(KERNEL_OUT)/drivers/video/omap2/omapfb/omapfb.h
+        cp $KERNELDIR/drivers/video/omap2/omapfb/omapfb.h $KERNEL_OUT/drivers/video/omap2/omapfb/omapfb.h
         make -j10 -C $KERNELDIR/pvr-source/eurasiacon/build/linux2/omap4430_android ARCH=arm KERNELDIR=$KERNEL_OUT TARGET_PRODUCT="blaze_tablet" BUILD=release TARGET_SGX=540 PLATFORM_VERSION=4.0
         mv $KERNELDIR/pvr-source/eurasiacon/binary2_540_120_omap4430_android_release/target/kbuild/pvrsrvkm_sgx540_120.ko $KERNEL_OUT
         $STRIP --strip-unneeded $KERNEL_OUT/pvrsrvkm_sgx540_120.ko

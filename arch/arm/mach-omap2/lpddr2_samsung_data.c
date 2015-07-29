@@ -11,15 +11,15 @@
  * published by the Free Software Foundation.
  */
 #include <mach/emif.h>
-#include <mach/lpddr2-elpida.h>
+#include <mach/lpddr2-samsung.h>
 
 const struct lpddr2_timings timings_samsung_400_mhz = {
 	.max_freq	= 400000000,
 	.RL		= 6,
-	.tRPab		= 21,
-	.tRCD		= 18,
-	.tWR		= 15,
-	.tRASmin	= 42,
+	.tRPab		= 14,
+	.tRCD		= 14,
+	.tWR		= 10,
+	.tRASmin	= 30,
 	.tRRD		= 10,
 	.tWTRx2		= 15,
 	.tXSR		= 140,
@@ -39,10 +39,10 @@ const struct lpddr2_timings timings_samsung_400_mhz = {
 const struct lpddr2_timings timings_samsung_333_mhz = {
 	.max_freq	= 333000000,
 	.RL		= 5,
-	.tRPab		= 21,
-	.tRCD		= 18,
-	.tWR		= 15,
-	.tRASmin	= 42,
+	.tRPab		= 14,
+	.tRCD		= 14,
+	.tWR		= 10,
+	.tRASmin	= 30,
 	.tRRD		= 10,
 	.tWTRx2		= 15,
 	.tXSR		= 140,
@@ -62,10 +62,10 @@ const struct lpddr2_timings timings_samsung_333_mhz = {
 const struct lpddr2_timings timings_samsung_200_mhz = {
 	.max_freq	= 200000000,
 	.RL		= 3,
-	.tRPab		= 21,
-	.tRCD		= 18,
-	.tWR		= 15,
-	.tRASmin	= 42,
+	.tRPab		= 14,
+	.tRCD		= 14,
+	.tWR		= 10,
+	.tRASmin	= 30,
 	.tRRD		= 10,
 	.tWTRx2		= 20,
 	.tXSR		= 140,

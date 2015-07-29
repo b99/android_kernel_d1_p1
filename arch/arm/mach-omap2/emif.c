@@ -86,6 +86,20 @@ static u32 emif_errata;
 #define is_emif_erratum(erratum) (emif_errata & EMIF_ERRATUM_##erratum)
 
 
+/*
+ * EMIF Power Management timer for Self Refresh will put the external SDRAM
+ * in Self Refresh mode after the EMIF is idle for number of DDR clock cycles
+ * set with REG_SR_TIM. The minimal value starts at 16 cycles mapped to 1 in
+ * REG_SR_TIM.
+ * However due to Errata i735, the minimal value of REG_SR_TIM is 6. That
+ * corresponds to 512 DDR cycles required for OPP100
+*/
+#define EMIF_ERRATUM_SR_TIMER_i735	BIT(0)
+#define EMIF_ERRATUM_SR_TIMER_MIN	6
+
+static u32 emif_errata;
+#define is_emif_erratum(erratum) (emif_errata & EMIF_ERRATUM_##erratum)
+
 static void do_cancel_out(u32 *num, u32 *den, u32 factor)
 {
 	while (1) {
@@ -530,10 +544,8 @@ static u32 get_ddr_phy_ctrl_1(u32 freq, u8 RL)
 		val = EMIF_DLL_SLAVE_DLY_CTRL_100_MHZ_AND_LESS;
 	else if (freq <= 200000000)
 		val = EMIF_DLL_SLAVE_DLY_CTRL_200_MHZ;
-	else if (freq <= 400000000)
-		val = EMIF_DLL_SLAVE_DLY_CTRL_400_MHZ;
 	else
-		val = EMIF_DLL_SLAVE_DLY_CTRL_466_MHZ;
+		val = EMIF_DLL_SLAVE_DLY_CTRL_400_MHZ;
 	mask_n_set(phy, OMAP44XX_REG_DLL_SLAVE_DLY_CTRL_SHIFT,
 		   OMAP44XX_REG_DLL_SLAVE_DLY_CTRL_MASK, val);
 

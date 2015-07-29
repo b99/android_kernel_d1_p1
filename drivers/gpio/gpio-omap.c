@@ -12,9 +12,6 @@
  * published by the Free Software Foundation.
  */
 
-/*============================================================================
-Problem NO.         Name        Time         Reason
-==============================================================================*/
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -490,21 +487,12 @@ static void _disable_gpio_irqbank(struct gpio_bank *bank, int gpio_mask)
 	__raw_writel(l, reg);
 }
 
-#define TOUCH_OMAP4430_INT_GPIO 35
-
 static inline void _set_gpio_irqenable(struct gpio_bank *bank, int gpio, int enable)
 {
-       if(gpio == TOUCH_OMAP4430_INT_GPIO)
-       {
-       	   if (enable)
+	if (enable)
 		_enable_gpio_irqbank(bank, GPIO_BIT(bank, gpio));
-	   else
+	else
 		_disable_gpio_irqbank(bank, GPIO_BIT(bank, gpio));
-       }
-       else
-       {
-	    _enable_gpio_irqbank(bank, GPIO_BIT(bank, gpio));
-       }
 }
 
 /*
@@ -789,14 +777,16 @@ static void gpio_unmask_irq(struct irq_data *d)
 	if (trigger)
 		_set_gpio_triggering(bank, GPIO_INDEX(bank, gpio), trigger);
 
-	/* For level-triggered GPIOs, the clearing must be done after
-	 * the HW source is cleared, thus after the handler has run */
-	if (bank->level_mask & irq_mask) {
-		_set_gpio_irqenable(bank, gpio, 0);
-		_clear_gpio_irqstatus(bank, gpio);
-	}
-
 	_set_gpio_irqenable(bank, gpio, 1);
+	/*
+	 * For level-triggered GPIOs, the clearing must be done after
+	 * the HW source is cleared, thus after the handler has run.
+	 * Also, make sure to clear the status _after_ enabling the irq
+	 * so that pending event will be cleared.
+	 */
+	if (bank->level_mask & irq_mask)
+		_clear_gpio_irqstatus(bank, gpio);
+
 	spin_unlock_irqrestore(&bank->lock, flags);
 }
 

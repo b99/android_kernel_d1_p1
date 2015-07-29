@@ -86,10 +86,20 @@ extern void gic_timer_retrigger(void);
 #ifdef CONFIG_OMAP4_DPLL_CASCADING
 extern bool omap4_abe_can_enter_dpll_cascading(void);
 extern bool omap4_is_in_dpll_cascading(void);
+#else
+static inline bool omap4_abe_can_enter_dpll_cascading(void)
+{
+	return false;
+}
+
+static inline bool omap4_is_in_dpll_cascading(void)
+{
+	return false;
+}
+#endif
 struct device;
 extern int omap4_dpll_cascading_blocker_hold(struct device *dev);
 extern int omap4_dpll_cascading_blocker_release(struct device *dev);
-#endif
 
 /*
  * Read MPIDR: Multiprocessor affinity register
@@ -161,6 +171,12 @@ extern u32 omap_get_arm_rev(void);
  */
 static inline unsigned int omap4_get_diagctrl0_errata_flags(void)
 {
+/* If we don't have any erratas enabled, return 0 right away */
+#if !defined(CONFIG_OMAP4_ARM_ERRATA_742230) && \
+	!defined(CONFIG_OMAP4_ARM_ERRATA_751472) && \
+	!defined(CONFIG_OMAP4_ARM_ERRATA_743622)
+	return 0;
+#else
 	unsigned int ret  = 0;
 	u32 arm_rev = omap_get_arm_rev();
 #ifdef CONFIG_OMAP4_ARM_ERRATA_742230
@@ -176,6 +192,7 @@ static inline unsigned int omap4_get_diagctrl0_errata_flags(void)
 		ret |= (1 << 6);
 #endif
 	return ret;
+#endif
 }
 
 extern int omap4_prcm_freq_update(void);

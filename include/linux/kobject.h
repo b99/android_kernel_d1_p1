@@ -25,7 +25,7 @@
 #include <linux/kobject_ns.h>
 #include <linux/kernel.h>
 #include <linux/wait.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 
 #define UEVENT_HELPER_PATH_LEN		256
 #define UEVENT_NUM_ENVP			32	/* number of env pointers */
@@ -228,7 +228,7 @@ static inline int kobject_uevent_env(struct kobject *kobj,
 
 static inline __attribute__((format(printf, 2, 3)))
 int add_uevent_var(struct kobj_uevent_env *env, const char *format, ...)
-{ return 0; }
+{ return -ENOMEM; }
 
 static inline int kobject_action_type(const char *buf, size_t count,
 				      enum kobject_action *type)

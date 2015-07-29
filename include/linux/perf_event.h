@@ -508,7 +508,7 @@ struct perf_guest_info_callbacks {
 #include <linux/cpu.h>
 #include <linux/irq_work.h>
 #include <linux/jump_label.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <asm/local.h>
 
 #define PERF_MAX_STACK_DEPTH		255
@@ -680,36 +680,9 @@ enum perf_event_active_state {
 };
 
 struct file;
-
-#define PERF_BUFFER_WRITABLE		0x01
-
-struct perf_buffer {
-	atomic_t			refcount;
-	struct rcu_head			rcu_head;
-#ifdef CONFIG_PERF_USE_VMALLOC
-	struct work_struct		work;
-	int				page_order;	/* allocation order  */
-#endif
-	int				nr_pages;	/* nr of data pages  */
-	int				writable;	/* are we writable   */
-
-	atomic_t			poll;		/* POLL_ for wakeups */
-
-	local_t				head;		/* write position    */
-	local_t				nest;		/* nested writers    */
-	local_t				events;		/* event limit       */
-	local_t				wakeup;		/* wakeup stamp      */
-	local_t				lost;		/* nr records lost   */
-
-	long				watermark;	/* wakeup watermark  */
-
-	struct perf_event_mmap_page	*user_page;
-	void				*data_pages[0];
-};
-
 struct perf_sample_data;
 
-typedef void (*perf_overflow_handler_t)(struct perf_event *, int,
+typedef void (*perf_overflow_handler_t)(struct perf_event *,
 					struct perf_sample_data *,
 					struct pt_regs *regs);
 
@@ -744,6 +717,8 @@ struct perf_cgroup {
 	struct				perf_cgroup_info *info;	/* timing info, one per cpu */
 };
 #endif
+
+struct ring_buffer;
 
 /**
  * struct perf_event - performance event kernel representation:
@@ -807,7 +782,7 @@ struct perf_event {
 	struct hw_perf_event		hw;
 
 	struct perf_event_context	*ctx;
-	struct file			*filp;
+	atomic_long_t			refcount;
 
 	/*
 	 * These accumulate total time (in nanoseconds) that children
@@ -834,7 +809,7 @@ struct perf_event {
 	atomic_t			mmap_count;
 	int				mmap_locked;
 	struct user_struct		*mmap_user;
-	struct perf_buffer		*buffer;
+	struct ring_buffer		*rb;
 
 	/* poll related */
 	wait_queue_head_t		waitq;
@@ -939,18 +914,17 @@ struct perf_cpu_context {
 	int				exclusive;
 	struct list_head		rotation_list;
 	int				jiffies_interval;
-	struct pmu			*active_pmu;
+	struct pmu			*unique_pmu;
 	struct perf_cgroup		*cgrp;
 };
 
 struct perf_output_handle {
 	struct perf_event		*event;
-	struct perf_buffer		*buffer;
+	struct ring_buffer		*rb;
 	unsigned long			wakeup;
 	unsigned long			size;
 	void				*addr;
 	int				page;
-	int				nmi;
 	int				sample;
 };
 
@@ -1018,7 +992,7 @@ extern void perf_prepare_sample(struct perf_event_header *header,
 				struct perf_event *event,
 				struct pt_regs *regs);
 
-extern int perf_event_overflow(struct perf_event *event, int nmi,
+extern int perf_event_overflow(struct perf_event *event,
 				 struct perf_sample_data *data,
 				 struct pt_regs *regs);
 
@@ -1037,7 +1011,7 @@ static inline int is_software_event(struct perf_event *event)
 
 extern struct jump_label_key perf_swevent_enabled[PERF_COUNT_SW_MAX];
 
-extern void __perf_sw_event(u32, u64, int, struct pt_regs *, u64);
+extern void __perf_sw_event(u32, u64, struct pt_regs *, u64);
 
 #ifndef perf_arch_fetch_caller_regs
 static inline void perf_arch_fetch_caller_regs(struct pt_regs *regs, unsigned long ip) { }
@@ -1059,7 +1033,7 @@ static inline void perf_fetch_caller_regs(struct pt_regs *regs)
 }
 
 static __always_inline void
-perf_sw_event(u32 event_id, u64 nr, int nmi, struct pt_regs *regs, u64 addr)
+perf_sw_event(u32 event_id, u64 nr, struct pt_regs *regs, u64 addr)
 {
 	struct pt_regs hot_regs;
 
@@ -1068,7 +1042,7 @@ perf_sw_event(u32 event_id, u64 nr, int nmi, struct pt_regs *regs, u64 addr)
 			perf_fetch_caller_regs(&hot_regs);
 			regs = &hot_regs;
 		}
-		__perf_sw_event(event_id, nr, nmi, regs, addr);
+		__perf_sw_event(event_id, nr, regs, addr);
 	}
 }
 
@@ -1082,7 +1056,7 @@ static inline void perf_event_task_sched_in(struct task_struct *task)
 
 static inline void perf_event_task_sched_out(struct task_struct *task, struct task_struct *next)
 {
-	perf_sw_event(PERF_COUNT_SW_CONTEXT_SWITCHES, 1, 1, NULL, 0);
+	perf_sw_event(PERF_COUNT_SW_CONTEXT_SWITCHES, 1, NULL, 0);
 
 	__perf_event_task_sched_out(task, next);
 }
@@ -1144,7 +1118,7 @@ extern void perf_bp_event(struct perf_event *event, void *data);
 
 extern int perf_output_begin(struct perf_output_handle *handle,
 			     struct perf_event *event, unsigned int size,
-			     int nmi, int sample);
+			     int sample);
 extern void perf_output_end(struct perf_output_handle *handle);
 extern void perf_output_copy(struct perf_output_handle *handle,
 			     const void *buf, unsigned int len);
@@ -1168,8 +1142,7 @@ static inline int perf_event_task_disable(void)				{ return -EINVAL; }
 static inline int perf_event_task_enable(void)				{ return -EINVAL; }
 
 static inline void
-perf_sw_event(u32 event_id, u64 nr, int nmi,
-		     struct pt_regs *regs, u64 addr)			{ }
+perf_sw_event(u32 event_id, u64 nr, struct pt_regs *regs, u64 addr)	{ }
 static inline void
 perf_bp_event(struct perf_event *event, void *data)			{ }
 
@@ -1187,6 +1160,12 @@ static inline void perf_swevent_put_recursion_context(int rctx)		{ }
 static inline void perf_event_enable(struct perf_event *event)		{ }
 static inline void perf_event_disable(struct perf_event *event)		{ }
 static inline void perf_event_task_tick(void)				{ }
+#endif
+
+#if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_INTEL)
+extern void perf_restore_debug_store(void);
+#else
+static inline void perf_restore_debug_store(void)			{ }
 #endif
 
 #define perf_output_put(handle, x) perf_output_copy((handle), &(x), sizeof(x))
