@@ -365,17 +365,9 @@ static int ashmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	if (!sc->nr_to_scan)
 		return lru_count;
 
-	/* android bug:When system memory is on low sate, some application (such as:SmsReceiverServ thread) 
-	will allocate memory while holding the ashmem_mutex in ashmem_mmap function may try to directly 
-	reclaim memory. Then ashmem_shrink() is called in same thread. It will deadlock at acquiring ashmem_mutex.
-	This change lets ashmem_shrink() return failure if ashmem_mutex is not
-	available instantly. Memory will be reclaimed from other shrinks.*/
-	/* mutex_lock(&ashmem_mutex); */
-	if (!mutex_trylock(&ashmem_mutex))
-	{
-		printk(KERN_ERR "%s:get ashmem_mutex failed! \n",__func__);
+		if (!mutex_trylock(&ashmem_mutex))
 		return -1;
-	}	
+
 	list_for_each_entry_safe(range, next, &ashmem_lru_list, lru) {
 		struct inode *inode = range->asma->file->f_dentry->d_inode;
 		loff_t start = range->pgstart * PAGE_SIZE;
