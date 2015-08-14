@@ -316,13 +316,9 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	smp_store_cpu_info(cpu);
 
 	/*
-<<<<<<< HEAD
-	 * OK, now it's safe to let the boot CPU continue.
-=======
 	 * OK, now it's safe to let the boot CPU continue.  Wait for
 	 * the CPU migration code to notice that the CPU is online
 	 * before we continue - which happens after __cpu_up returns.
->>>>>>> f3b2fec... ARM: SMP: use a timing out completion for cpu hotplug
 	 */
 	set_cpu_online(cpu, true);
 	complete(&cpu_running);
