@@ -577,8 +577,7 @@ static int udf_create(struct inode *dir, struct dentry *dentry, int mode,
 
 	fi = udf_add_entry(dir, dentry, &fibh, &cfi, &err);
 	if (!fi) {
-		inode->i_nlink--;
-		mark_inode_dirty(inode);
+		inode_dec_link_count(inode);
 		iput(inode);
 		return err;
 	}
@@ -618,8 +617,7 @@ static int udf_mknod(struct inode *dir, struct dentry *dentry, int mode,
 	init_special_inode(inode, mode, rdev);
 	fi = udf_add_entry(dir, dentry, &fibh, &cfi, &err);
 	if (!fi) {
-		inode->i_nlink--;
-		mark_inode_dirty(inode);
+		inode_dec_link_count(inode);
 		iput(inode);
 		return err;
 	}
@@ -665,8 +663,7 @@ static int udf_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 	inode->i_fop = &udf_dir_operations;
 	fi = udf_add_entry(inode, NULL, &fibh, &cfi, &err);
 	if (!fi) {
-		inode->i_nlink--;
-		mark_inode_dirty(inode);
+		inode_dec_link_count(inode);
 		iput(inode);
 		goto out;
 	}
@@ -683,7 +680,7 @@ static int udf_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 
 	fi = udf_add_entry(dir, dentry, &fibh, &cfi, &err);
 	if (!fi) {
-		inode->i_nlink = 0;
+		clear_nlink(inode);
 		mark_inode_dirty(inode);
 		iput(inode);
 		goto out;
@@ -1277,21 +1274,20 @@ static struct dentry *udf_fh_to_parent(struct super_block *sb,
 				 fid->udf.parent_partref,
 				 fid->udf.parent_generation);
 }
-static int udf_encode_fh(struct dentry *de, __u32 *fh, int *lenp,
-			 int connectable)
+static int udf_encode_fh(struct inode *inode, __u32 *fh, int *lenp,
+			 struct inode *parent)
 {
 	int len = *lenp;
-	struct inode *inode =  de->d_inode;
 	struct kernel_lb_addr location = UDF_I(inode)->i_location;
 	struct fid *fid = (struct fid *)fh;
 	int type = FILEID_UDF_WITHOUT_PARENT;
 
-	if (connectable && (len < 5)) {
+	if (parent && (len < 5)) {
 		*lenp = 5;
-		return 255;
+		return FILEID_INVALID;
 	} else if (len < 3) {
 		*lenp = 3;
-		return 255;
+		return FILEID_INVALID;
 	}
 
 	*lenp = 3;
@@ -1300,14 +1296,11 @@ static int udf_encode_fh(struct dentry *de, __u32 *fh, int *lenp,
 	fid->udf.parent_partref = 0;
 	fid->udf.generation = inode->i_generation;
 
-	if (connectable && !S_ISDIR(inode->i_mode)) {
-		spin_lock(&de->d_lock);
-		inode = de->d_parent->d_inode;
-		location = UDF_I(inode)->i_location;
+	if (parent) {
+		location = UDF_I(parent)->i_location;
 		fid->udf.parent_block = location.logicalBlockNum;
 		fid->udf.parent_partref = location.partitionReferenceNum;
 		fid->udf.parent_generation = inode->i_generation;
-		spin_unlock(&de->d_lock);
 		*lenp = 5;
 		type = FILEID_UDF_WITH_PARENT;
 	}

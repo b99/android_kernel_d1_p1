@@ -17,12 +17,6 @@
  * GNU General Public License for more details.
  */
 
- /******************************************************************************
-  History       :
-  --------------------------------------------------------------------------
-  DTS ID:             Author:    Date:     Modification:
-******************************************************************************/
-
 #include <linux/sched.h>
 #include <linux/module.h>
 #include <linux/fs.h>
@@ -32,13 +26,19 @@
 #include <linux/slab.h>
 #include <linux/time.h>
 #include "logger.h"
+#include <linux/earlysuspend.h>
 
 #include <asm/ioctls.h>
-#if defined(CONFIG_HUAWEI_KERNEL)
-/*<qindiwen 106479 20130607 begin */
-static int minor_of_power = 0;
-/* qindiwen 106479 20130607 end>*/
-#endif
+
+/*
+ * 0 - Enabled
+ * 1 - Auto Suspend
+ * 2 - Disabled
+ */
+static unsigned int log_mode = 2;
+static unsigned int log_enabled = 1; // Do not change this value
+
+module_param(log_mode, uint, S_IWUSR | S_IRUGO);
 
 /*
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
@@ -421,6 +421,23 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 	return count;
 }
 
+static void log_early_suspend(struct early_suspend *handler)
+{
+	if (log_mode == 1)
+		log_enabled = 0;
+}
+
+static void log_late_resume(struct early_suspend *handler)
+{
+	log_enabled = 1;
+}
+
+static struct early_suspend log_suspend = {
+	.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 10,
+	.suspend = log_early_suspend,
+	.resume = log_late_resume,
+};
+
 /*
  * logger_aio_write - our write method, implementing support for write(),
  * writev(), and aio_write(). Writes are our fast path, and we try to optimize
@@ -429,12 +446,16 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 			 unsigned long nr_segs, loff_t ppos)
 {
-	struct logger_log *log = file_get_log(iocb->ki_filp);
-	size_t orig = log->w_off;
+	struct logger_log *log;
+	size_t orig, ret = 0;
 	struct logger_entry header;
 	struct timespec now;
-	ssize_t ret = 0;
 
+	if (!log_enabled || log_mode == 2)
+		return 0;
+
+	log = file_get_log(iocb->ki_filp);
+	orig = log->w_off;
 	now = current_kernel_time();
 
 	header.pid = current->tgid;
@@ -670,15 +691,6 @@ static long logger_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		reader = file->private_data;
 		ret = logger_set_version(reader, argp);
 		break;
-       /*<qindiwen 106479 20130607 begin */
-#if defined(CONFIG_HUAWEI_KERNEL)
-       case FIONREAD:
-            if (minor_of_power == log->misc.minor) {
-                ret = -ENOTTY;
-            }
-            break;
-#endif
-       /* qindiwen 106479 20130607 end>*/
 	}
 
 	mutex_unlock(&log->mutex);
@@ -724,12 +736,6 @@ DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, 256*1024)
 DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, 256*1024)
 DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, 256*1024)
 DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, 256*1024)
-DEFINE_LOGGER_DEVICE(log_exception, LOGGER_LOG_EXCEPTION, 16*1024)
-#if defined(CONFIG_HUAWEI_KERNEL)
-/*<qindiwen 106479 20130607 begin */
-DEFINE_LOGGER_DEVICE(log_power, LOGGER_LOG_POWER, 256*1024)
-/* qindiwen 106479 20130607 end>*/
-#endif
 
 static struct logger_log *get_log_from_minor(int minor)
 {
@@ -741,14 +747,6 @@ static struct logger_log *get_log_from_minor(int minor)
 		return &log_radio;
 	if (log_system.misc.minor == minor)
 		return &log_system;
-	if (log_exception.misc.minor == minor)
-		return &log_exception;
-#if defined(CONFIG_HUAWEI_KERNEL)
-    /*<qindiwen 106479 20130607 begin */
-    if (log_power.misc.minor == minor)
-        return &log_power;
-    /* qindiwen 106479 20130607 end>*/
-#endif
 	return NULL;
 }
 
@@ -769,17 +767,11 @@ static int __init init_log(struct logger_log *log)
 	return 0;
 }
 
-#define LOG_CTL_ON   1
-#define LOG_CTL_OFF 0 
-
-extern char get_logctl_value(void);
-
 static int __init logger_init(void)
 {
 	int ret;
 
-       if(get_logctl_value() != LOG_CTL_ON)
-	   	return 0;
+	register_early_suspend(&log_suspend);
 
 	ret = init_log(&log_main);
 	if (unlikely(ret))
@@ -797,20 +789,7 @@ static int __init logger_init(void)
 	if (unlikely(ret))
 		goto out;
 
-        ret = init_log(&log_exception);
-        if (unlikely(ret))
-                goto out;
-
 out:
-#if defined(CONFIG_HUAWEI_KERNEL)
-    /*<qindiwen 106479 20130607 begin */
-    ret = init_log(&log_power);
-    if (unlikely(ret)) {
-        //do nothing
-    }
-    minor_of_power = log_power.misc.minor;
-    /* qindiwen 106479 20130607 end>*/
-#endif
 	return ret;
 }
 device_initcall(logger_init);
