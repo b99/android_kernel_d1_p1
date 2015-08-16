@@ -552,9 +552,11 @@ static void remove_rmap_item_from_tree(struct rmap_item *rmap_item)
 		 * But be careful when an mm is exiting: do the rb_erase
 		 * if this rmap_item was inserted by this scan, rather
 		 * than left over from before.
-		 */
+		 */	
 		age = (unsigned char)(ksm_scan.seqnr - rmap_item->address);
+#ifndef CONFIG_KSM_CHECK_PAGE
 		BUG_ON(age > 1);
+#endif
 		if (!age)
 			rb_erase(&rmap_item->node, &root_unstable_tree);
 
@@ -672,9 +674,9 @@ error:
 static u32 calc_checksum(struct page *page)
 {
 	u32 checksum;
-	void *addr = kmap_atomic(page, KM_USER0);
+	void *addr = kmap_atomic(page);
 	checksum = jhash2(addr, PAGE_SIZE / 4, 17);
-	kunmap_atomic(addr, KM_USER0);
+	kunmap_atomic(addr);
 	return checksum;
 }
 
@@ -683,11 +685,11 @@ static int memcmp_pages(struct page *page1, struct page *page2)
 	char *addr1, *addr2;
 	int ret;
 
-	addr1 = kmap_atomic(page1, KM_USER0);
-	addr2 = kmap_atomic(page2, KM_USER1);
+	addr1 = kmap_atomic(page1);
+	addr2 = kmap_atomic(page2);
 	ret = memcmp(addr1, addr2, PAGE_SIZE);
-	kunmap_atomic(addr2, KM_USER1);
-	kunmap_atomic(addr1, KM_USER0);
+	kunmap_atomic(addr2);
+	kunmap_atomic(addr1);
 	return ret;
 }
 
@@ -1403,6 +1405,31 @@ next_mm:
 	return NULL;
 }
 
+static inline int is_page_scanned(struct page *page)
+{
+#ifdef CONFIG_KSM_CHECK_PAGE
+	/* page is already marked as ksm, so this will be simple merge */
+	if (PageKsm(page))
+		return 0;
+
+	if (ksm_scan.seqnr & 0x1) {
+		/* odd cycle */
+		/* clear even cycle bit */
+		ClearPageKsmScan0(page);
+		/* get old value and mark it scanned */
+		return TestSetPageKsmScan1(page);
+	} else {
+		/* even cycle */
+		/* clear odd cycle bit */
+		ClearPageKsmScan1(page);
+		/* get old value and mark it scanned */
+		return TestSetPageKsmScan0(page);
+	}
+#else
+	return 0;
+#endif
+}
+
 /**
  * ksm_do_scan  - the ksm scanner main worker function.
  * @scan_npages - number of pages we want to scan before we return.
@@ -1417,8 +1444,10 @@ static void ksm_do_scan(unsigned int scan_npages)
 		rmap_item = scan_get_next_rmap_item(&page);
 		if (!rmap_item)
 			return;
-		if (!PageKsm(page) || !in_stable_tree(rmap_item))
-			cmp_and_merge_page(page, rmap_item);
+		if (!PageKsm(page) || !in_stable_tree(rmap_item)) {
+			if (!is_page_scanned(page))
+				cmp_and_merge_page(page, rmap_item);
+		}
 		put_page(page);
 	}
 }
@@ -1905,7 +1934,8 @@ static ssize_t run_store(struct kobject *kobj, struct kobj_attribute *attr,
 
 			oom_score_adj = test_set_oom_score_adj(OOM_SCORE_ADJ_MAX);
 			err = unmerge_and_remove_all_rmap_items();
-			test_set_oom_score_adj(oom_score_adj);
+			compare_swap_oom_score_adj(OOM_SCORE_ADJ_MAX,
+								oom_score_adj);
 			if (err) {
 				ksm_run = KSM_RUN_STOP;
 				count = err;

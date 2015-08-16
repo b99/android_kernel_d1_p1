@@ -1444,7 +1444,7 @@ void reiserfs_read_locked_inode(struct inode *inode,
 		/* a stale NFS handle can trigger this without it being an error */
 		pathrelse(&path_to_sd);
 		reiserfs_make_bad_inode(inode);
-		inode->i_nlink = 0;
+		clear_nlink(inode);
 		return;
 	}
 
@@ -1591,38 +1591,32 @@ struct dentry *reiserfs_fh_to_parent(struct super_block *sb, struct fid *fid,
 		(fh_type == 6) ? fid->raw[5] : 0);
 }
 
-int reiserfs_encode_fh(struct dentry *dentry, __u32 * data, int *lenp,
-		       int need_parent)
+int reiserfs_encode_fh(struct inode *inode, __u32 * data, int *lenp,
+		       struct inode *parent)
 {
-	struct inode *inode = dentry->d_inode;
 	int maxlen = *lenp;
 
-	if (need_parent && (maxlen < 5)) {
+	if (parent && (maxlen < 5)) {
 		*lenp = 5;
-		return 255;
+		return FILEID_INVALID;
 	} else if (maxlen < 3) {
 		*lenp = 3;
-		return 255;
+		return FILEID_INVALID;
 	}
 
 	data[0] = inode->i_ino;
 	data[1] = le32_to_cpu(INODE_PKEY(inode)->k_dir_id);
 	data[2] = inode->i_generation;
 	*lenp = 3;
-	/* no room for directory info? return what we've stored so far */
-	if (maxlen < 5 || !need_parent)
-		return 3;
-
-	spin_lock(&dentry->d_lock);
-	inode = dentry->d_parent->d_inode;
-	data[3] = inode->i_ino;
-	data[4] = le32_to_cpu(INODE_PKEY(inode)->k_dir_id);
-	*lenp = 5;
-	if (maxlen >= 6) {
-		data[5] = inode->i_generation;
-		*lenp = 6;
+	if (parent) {
+		data[3] = parent->i_ino;
+		data[4] = le32_to_cpu(INODE_PKEY(parent)->k_dir_id);
+		*lenp = 5;
+		if (maxlen >= 6) {
+			data[5] = parent->i_generation;
+			*lenp = 6;
+		}
 	}
-	spin_unlock(&dentry->d_lock);
 	return *lenp;
 }
 
@@ -1989,7 +1983,7 @@ int reiserfs_new_inode(struct reiserfs_transaction_handle *th,
 	make_bad_inode(inode);
 
       out_inserted_sd:
-	inode->i_nlink = 0;
+	clear_nlink(inode);
 	th->t_trans_id = 0;	/* so the caller can't use this handle later */
 	unlock_new_inode(inode); /* OK to do even if we hadn't locked it */
 	iput(inode);

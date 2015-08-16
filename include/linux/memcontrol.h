@@ -56,10 +56,10 @@ extern int mem_cgroup_newpage_charge(struct page *page, struct mm_struct *mm,
 				gfp_t gfp_mask);
 /* for swap handling */
 extern int mem_cgroup_try_charge_swapin(struct mm_struct *mm,
-		struct page *page, gfp_t mask, struct mem_cgroup **ptr);
+		struct page *page, gfp_t mask, struct mem_cgroup **memcgp);
 extern void mem_cgroup_commit_charge_swapin(struct page *page,
-					struct mem_cgroup *ptr);
-extern void mem_cgroup_cancel_charge_swapin(struct mem_cgroup *ptr);
+					struct mem_cgroup *memcg);
+extern void mem_cgroup_cancel_charge_swapin(struct mem_cgroup *memcg);
 
 extern int mem_cgroup_cache_charge(struct page *page, struct mm_struct *mm,
 					gfp_t gfp_mask);
@@ -80,7 +80,7 @@ extern void mem_cgroup_uncharge_cache_page(struct page *page);
 extern int mem_cgroup_shmem_charge_fallback(struct page *page,
 			struct mm_struct *mm, gfp_t gfp_mask);
 
-extern void mem_cgroup_out_of_memory(struct mem_cgroup *mem, gfp_t gfp_mask);
+extern void mem_cgroup_out_of_memory(struct mem_cgroup *mem, gfp_t gfp_mask, int order);
 int task_in_mem_cgroup(struct task_struct *task, const struct mem_cgroup *mem);
 
 extern struct mem_cgroup *try_get_mem_cgroup_from_page(struct page *page);
@@ -103,8 +103,8 @@ extern struct cgroup_subsys_state *mem_cgroup_css(struct mem_cgroup *mem);
 
 extern int
 mem_cgroup_prepare_migration(struct page *page,
-	struct page *newpage, struct mem_cgroup **ptr, gfp_t gfp_mask);
-extern void mem_cgroup_end_migration(struct mem_cgroup *mem,
+	struct page *newpage, struct mem_cgroup **memcgp, gfp_t gfp_mask);
+extern void mem_cgroup_end_migration(struct mem_cgroup *memcg,
 	struct page *oldpage, struct page *newpage, bool migration_ok);
 
 /*
@@ -182,17 +182,17 @@ static inline int mem_cgroup_cache_charge(struct page *page,
 }
 
 static inline int mem_cgroup_try_charge_swapin(struct mm_struct *mm,
-		struct page *page, gfp_t gfp_mask, struct mem_cgroup **ptr)
+		struct page *page, gfp_t gfp_mask, struct mem_cgroup **memcgp)
 {
 	return 0;
 }
 
 static inline void mem_cgroup_commit_charge_swapin(struct page *page,
-					  struct mem_cgroup *ptr)
+					  struct mem_cgroup *memcg)
 {
 }
 
-static inline void mem_cgroup_cancel_charge_swapin(struct mem_cgroup *ptr)
+static inline void mem_cgroup_cancel_charge_swapin(struct mem_cgroup *memcg)
 {
 }
 
@@ -275,7 +275,7 @@ static inline struct cgroup_subsys_state *mem_cgroup_css(struct mem_cgroup *mem)
 
 static inline int
 mem_cgroup_prepare_migration(struct page *page, struct page *newpage,
-	struct mem_cgroup **ptr, gfp_t gfp_mask)
+	struct mem_cgroup **memcgp, gfp_t gfp_mask)
 {
 	return 0;
 }
