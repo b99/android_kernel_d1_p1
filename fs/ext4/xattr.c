@@ -158,13 +158,10 @@ ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end)
 static inline int
 ext4_xattr_check_block(struct buffer_head *bh)
 {
-	int error;
-
 	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
 	    BHDR(bh)->h_blocks != cpu_to_le32(1))
 		return -EIO;
-	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size);
-	return error;
+	return ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size);
 }
 
 static inline int
@@ -992,11 +989,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
 	no_expand = ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND);
 	ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND);
 
-	error = ext4_get_inode_loc(inode, &is.iloc);
-	if (error)
-		goto cleanup;
-
-	error = ext4_journal_get_write_access(handle, is.iloc.bh);
+	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
 	if (error)
 		goto cleanup;
 
