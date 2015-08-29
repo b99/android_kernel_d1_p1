@@ -260,7 +260,7 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
-	if (card->ext_csd.rev > 5) {
+	if (card->ext_csd.rev > 6) {
 		printk(KERN_ERR "%s: unrecognised EXT_CSD revision %d\n",
 			mmc_hostname(card->host), card->ext_csd.rev);
 		err = -EINVAL;
@@ -406,6 +406,10 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 	if (card->ext_csd.rev >= 5)
 		card->ext_csd.rel_param = ext_csd[EXT_CSD_WR_REL_PARAM];
+
+	/* eMMC v4.5 or later */
+	if (card->ext_csd.rev >= 6)
+		card->ext_csd.feature_support |= MMC_DISCARD_FEATURE;
 
 	card->ext_csd.raw_erased_mem_count = ext_csd[EXT_CSD_ERASED_MEM_CONT];
 	if (ext_csd[EXT_CSD_ERASED_MEM_CONT])
@@ -578,6 +582,86 @@ static const struct mmc_fixup mmc_fixups[] = {
 #endif
 	END_FIXUP
 };
+
+/*
+ * Select the PowerClass for the current bus width
+ * If power class is defined for 4/8 bit bus in the
+ * extended CSD register, select it by executing the
+ * mmc_switch command.
+ */
+static int mmc_select_powerclass(struct mmc_card *card,
+		unsigned int bus_width, u8 *ext_csd)
+{
+	int err = 0;
+	unsigned int pwrclass_val;
+	unsigned int index = 0;
+	struct mmc_host *host;
+
+	BUG_ON(!card);
+
+	host = card->host;
+	BUG_ON(!host);
+
+	if (ext_csd == NULL)
+		return 0;
+
+	/* Power class selection is supported for versions >= 4.0 */
+	if (card->csd.mmca_vsn < CSD_SPEC_VER_4)
+		return 0;
+
+	/* Power class values are defined only for 4/8 bit bus */
+	if (bus_width == EXT_CSD_BUS_WIDTH_1)
+		return 0;
+
+	switch (1 << host->ios.vdd) {
+	case MMC_VDD_165_195:
+		if (host->ios.clock <= 26000000)
+			index = EXT_CSD_PWR_CL_26_195;
+		else if	(host->ios.clock <= 52000000)
+			index = (bus_width <= EXT_CSD_BUS_WIDTH_8) ?
+				EXT_CSD_PWR_CL_52_195 :
+				EXT_CSD_PWR_CL_DDR_52_195;
+		else if (host->ios.clock <= 200000000)
+			index = EXT_CSD_PWR_CL_200_195;
+		break;
+	case MMC_VDD_32_33:
+	case MMC_VDD_33_34:
+	case MMC_VDD_34_35:
+	case MMC_VDD_35_36:
+		if (host->ios.clock <= 26000000)
+			index = EXT_CSD_PWR_CL_26_360;
+		else if	(host->ios.clock <= 52000000)
+			index = (bus_width <= EXT_CSD_BUS_WIDTH_8) ?
+				EXT_CSD_PWR_CL_52_360 :
+				EXT_CSD_PWR_CL_DDR_52_360;
+		else if (host->ios.clock <= 200000000)
+			index = EXT_CSD_PWR_CL_200_360;
+		break;
+	default:
+		pr_warning("%s: Voltage range not supported "
+			   "for power class.\n", mmc_hostname(host));
+		return -EINVAL;
+	}
+
+	pwrclass_val = ext_csd[index];
+
+	if (bus_width & (EXT_CSD_BUS_WIDTH_8 | EXT_CSD_DDR_BUS_WIDTH_8))
+		pwrclass_val = (pwrclass_val & EXT_CSD_PWR_CL_8BIT_MASK) >>
+				EXT_CSD_PWR_CL_8BIT_SHIFT;
+	else
+		pwrclass_val = (pwrclass_val & EXT_CSD_PWR_CL_4BIT_MASK) >>
+				EXT_CSD_PWR_CL_4BIT_SHIFT;
+
+	/* If the power class is different from the default value */
+	if (pwrclass_val > 0) {
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				 EXT_CSD_POWER_CLASS,
+				 pwrclass_val,
+				 0);
+	}
+
+	return err;
+}
 
 /*
  * Handle the detection and initialisation of a card.
@@ -832,6 +916,14 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			bus_width = bus_widths[idx];
 			if (bus_width == MMC_BUS_WIDTH_1)
 				ddr = 0; /* no DDR for 1-bit width */
+			err = mmc_select_powerclass(card, ext_csd_bits[idx][0],
+						    ext_csd);
+			if (err)
+				pr_err("%s: power class selection to "
+				       "bus width %d failed\n",
+				       mmc_hostname(card->host),
+				       1 << bus_width);
+
 			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					 EXT_CSD_BUS_WIDTH,
 					 ext_csd_bits[idx][0],
@@ -855,6 +947,14 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		}
 
 		if (!err && ddr) {
+			err = mmc_select_powerclass(card, ext_csd_bits[idx][1],
+						    ext_csd);
+			if (err)
+				pr_err("%s: power class selection to "
+				       "bus width %d ddr %d failed\n",
+				       mmc_hostname(card->host),
+				       1 << bus_width, ddr);
+
 			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					 EXT_CSD_BUS_WIDTH,
 					 ext_csd_bits[idx][1],

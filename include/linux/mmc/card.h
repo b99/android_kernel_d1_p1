@@ -77,6 +77,9 @@ struct mmc_ext_csd {
 	u8			raw_sec_feature_support;/* 231 */
 	u8			raw_trim_mult;		/* 232 */
 	u8			raw_sectors[4];		/* 212 - 4 bytes */
+
+	unsigned int            feature_support;
+#define MMC_DISCARD_FEATURE	BIT(0)                  /* CMD38 feature */
 };
 
 struct sd_scr {
@@ -191,6 +194,7 @@ struct mmc_card {
 #define MMC_QUIRK_BLK_NO_CMD23	(1<<7)		/* Avoid CMD23 for regular multiblock */
 #define MMC_QUIRK_SAMSUNG_WL_PATCH	(1<<8)	/* Patch Samsung FW to fix wear leveling bug */
 #define MMC_QUIRK_SAMSUNG_SMART	(1<<9)		/* Samsung SMART is available */
+#define MMC_QUIRK_SEC_ERASE_TRIM_BROKEN (1<<10)	/* Skip secure for erase/trim */
 
 	unsigned int		erase_size;	/* erase size in sectors */
  	unsigned int		erase_shift;	/* if erase unit is power 2 */
