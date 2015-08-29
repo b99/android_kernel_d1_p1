@@ -55,6 +55,11 @@
 #include <plat/clock.h>
 #endif
 
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+#include <linux/notifier.h>
+#include <plat/clock.h>
+#endif
+
 /* OMAP HSMMC Host Controller Registers */
 #define OMAP_HSMMC_SYSCONFIG	0x0010
 #define OMAP_HSMMC_SYSSTATUS	0x0014
