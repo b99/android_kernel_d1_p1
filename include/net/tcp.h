@@ -428,6 +428,9 @@ extern struct sk_buff * tcp_make_synack(struct sock *sk, struct dst_entry *dst,
 					struct request_values *rvp);
 extern int tcp_disconnect(struct sock *sk, int flags);
 
+void tcp_connect_init(struct sock *sk);
+void tcp_finish_connect(struct sock *sk, struct sk_buff *skb);
+void tcp_queue_rcv(struct sock *sk, struct sk_buff *skb, int hdrlen);
 
 /* From syncookies.c */
 extern __u32 syncookie_secret[2][16-4+SHA_DIGEST_WORDS];
@@ -580,6 +583,8 @@ static inline u32 tcp_receive_window(const struct tcp_sock *tp)
  * if necessary.  This is a "raw" window selection.
  */
 extern u32 __tcp_select_window(struct sock *sk);
+
+void tcp_send_window_probe(struct sock *sk);
 
 /* TCP timestamps are only 32-bits, this causes a slight
  * complication on 64-bit systems since we store a snapshot
