@@ -10,15 +10,12 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
 */
-/*================================================================================
-  EDIT HISTORY FOR MODULE
-   case                who           when            what, where, why
- ================================================================================*/
 
 #include <linux/rtc.h>
 #include <linux/sched.h>
 #include <linux/log2.h>
 #include <linux/workqueue.h>
+
 static int rtc_timer_enqueue(struct rtc_device *rtc, struct rtc_timer *timer);
 static void rtc_timer_remove(struct rtc_device *rtc, struct rtc_timer *timer);
 
@@ -335,7 +332,7 @@ static int __rtc_set_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 	/* Make sure we're not setting alarms in the past */
 	err = __rtc_read_time(rtc, &tm);
 	rtc_tm_to_time(&tm, &now);
-	if (scheduled <= now && alarm->enabled == 1)
+	if (scheduled <= now)
 		return -ETIME;
 	/*
 	 * XXX - We just checked to make sure the alarm time is not
@@ -353,6 +350,7 @@ static int __rtc_set_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 
 	return err;
 }
+
 int rtc_set_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 {
 	int err;
@@ -363,12 +361,15 @@ int rtc_set_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 
 	err = mutex_lock_interruptible(&rtc->ops_lock);
 	if (err)
-                return err;
-	rtc_timer_remove(rtc, &rtc->aie_timer);
+		return err;
+	if (rtc->aie_timer.enabled) {
+		rtc_timer_remove(rtc, &rtc->aie_timer);
+	}
 	rtc->aie_timer.node.expires = rtc_tm_to_ktime(alarm->time);
 	rtc->aie_timer.period = ktime_set(0, 0);
-	rtc->aie_timer.enabled = alarm->enabled;
-	err = rtc_timer_enqueue(rtc, &rtc->aie_timer);
+	if (alarm->enabled) {
+		err = rtc_timer_enqueue(rtc, &rtc->aie_timer);
+	}
 	mutex_unlock(&rtc->ops_lock);
 	return err;
 }
@@ -742,12 +743,13 @@ EXPORT_SYMBOL_GPL(rtc_irq_set_freq);
  */
 static int rtc_timer_enqueue(struct rtc_device *rtc, struct rtc_timer *timer)
 {
+	timer->enabled = 1;
 	timerqueue_add(&rtc->timerqueue, &timer->node);
 	if (&timer->node == timerqueue_getnext(&rtc->timerqueue)) {
 		struct rtc_wkalrm alarm;
 		int err;
 		alarm.time = rtc_ktime_to_tm(timer->node.expires);
-		alarm.enabled = (unsigned char)timer->enabled;
+		alarm.enabled = 1;
 		err = __rtc_set_alarm(rtc, &alarm);
 		if (err == -ETIME)
 			schedule_work(&rtc->irqwork);

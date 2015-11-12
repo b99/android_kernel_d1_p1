@@ -30,11 +30,6 @@
 
 #include <linux/i2c/twl.h>
 
-#include <linux/reboot.h>
-#include <linux/syscalls.h>
-#include <linux/workqueue.h>
-extern unsigned int get_charge_flag(void);
-extern unsigned int get_recovery_flag(void);
 
 /*
  * RTC block register offsets (use TWL_MODULE_RTC)
@@ -393,13 +388,6 @@ out:
 	return ret;
 }
 
-static struct work_struct oem_rtc_reboot_queue;
-static void oem_rtc_reboot(struct work_struct *work)
-{
-        sys_sync();
-        kernel_restart("Recovery_alarm_reboot");
-}
-
 static irqreturn_t twl_rtc_interrupt(int irq, void *rtc)
 {
 	unsigned long events = 0;
@@ -446,19 +434,6 @@ static irqreturn_t twl_rtc_interrupt(int irq, void *rtc)
 
 	/* Notify RTC core on event */
 	rtc_update_irq(rtc, 1, events);
-
-        /*
-         * The device is charging in recovery mode;
-         * When the power-off alarm irq is triggered,
-         * the device need to be rebooted
-         * Do not use kernel_restart() in ISR
-         */
-        if(unlikely((events & (RTC_IRQF | RTC_AF)) == (RTC_IRQF | RTC_AF) &&
-                        get_charge_flag() && get_recovery_flag()))
-        {
-                schedule_work(&oem_rtc_reboot_queue);
-                //kernel_restart("Recovery_alarm_reboot");
-        }
 
 	ret = IRQ_HANDLED;
 out:
@@ -643,7 +618,6 @@ static int __init twl_rtc_init(void)
 	else
 		rtc_reg_map = (u8 *) twl6030_rtc_reg_map;
 
-        INIT_WORK(&oem_rtc_reboot_queue, oem_rtc_reboot);
 	return platform_driver_register(&twl4030rtc_driver);
 }
 module_init(twl_rtc_init);
