@@ -12,10 +12,7 @@
  * GNU General Public License for more details.
  *
  */
-/*================================================================================
-   EDIT HISTORY FOR MODULE
-   case                who           when            what, where, why
- ================================================================================*/
+
 #include <asm/mach/time.h>
 #include <linux/android_alarm.h>
 #include <linux/device.h>
@@ -70,8 +67,7 @@ static struct wake_lock alarm_rtc_wake_lock;
 static struct platform_device *alarm_platform_dev;
 struct alarm_queue alarms[ANDROID_ALARM_TYPE_COUNT];
 static bool suspended;
-/*rtc_alarm_bak:backup rtc-alarm info. before the device suspend,and resume the info. after the device resume*/
-static struct rtc_wkalrm   rtc_alarm_bak;
+
 static void update_timer_locked(struct alarm_queue *base, bool head_removed)
 {
 	struct alarm *alarm;
@@ -302,20 +298,7 @@ err:
 	mutex_unlock(&alarm_setrtc_mutex);
 	return ret;
 }
-int alarm_set_rtc_alarm(long time_sec,bool enable_irq)
-{
-    int err = 0;
-    struct rtc_wkalrm  rtc_alarm;
 
-    memset(&rtc_alarm, 0, sizeof(rtc_alarm));
-    rtc_time_to_tm(time_sec , &rtc_alarm.time);
-    rtc_alarm.enabled = (enable_irq == true ? 1:0);
-    err = rtc_set_alarm(alarm_rtc_dev, &rtc_alarm);
-    printk(KERN_DEBUG "set rtc alarm[%d-%d-%d] [%d:%d:%d]\n",rtc_alarm.time.tm_year-100, rtc_alarm.time.tm_mon+1, \
-    rtc_alarm.time.tm_mday,rtc_alarm.time.tm_hour,rtc_alarm.time.tm_min,rtc_alarm.time.tm_sec);
-
-    return err;
-}
 /**
  * alarm_get_elapsed_realtime - get the elapsed real time in ktime_t format
  *
@@ -430,8 +413,6 @@ static int alarm_suspend(struct platform_device *pdev, pm_message_t state)
 
 		rtc_time_to_tm(rtc_alarm_time, &rtc_alarm.time);
 		rtc_alarm.enabled = 1;
-		memset(&rtc_alarm_bak, 0, sizeof(rtc_alarm_bak));
-		rtc_read_alarm(alarm_rtc_dev, &rtc_alarm_bak);
 		rtc_set_alarm(alarm_rtc_dev, &rtc_alarm);
 		rtc_read_time(alarm_rtc_dev, &rtc_current_rtc_time);
 		rtc_tm_to_time(&rtc_current_rtc_time, &rtc_current_time);
@@ -441,7 +422,10 @@ static int alarm_suspend(struct platform_device *pdev, pm_message_t state)
 			rtc_delta.tv_sec, rtc_delta.tv_nsec);
 		if (rtc_current_time + 1 >= rtc_alarm_time) {
 			pr_alarm(SUSPEND, "alarm about to go off\n");
-			rtc_set_alarm(alarm_rtc_dev, &rtc_alarm_bak);
+			memset(&rtc_alarm, 0, sizeof(rtc_alarm));
+			rtc_alarm.enabled = 0;
+			rtc_set_alarm(alarm_rtc_dev, &rtc_alarm);
+
 			spin_lock_irqsave(&alarm_slock, flags);
 			suspended = false;
 			wake_lock_timeout(&alarm_rtc_wake_lock, 2 * HZ);
@@ -458,11 +442,15 @@ static int alarm_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int alarm_resume(struct platform_device *pdev)
 {
+	struct rtc_wkalrm alarm;
 	unsigned long       flags;
 
 	pr_alarm(SUSPEND, "alarm_resume(%p)\n", pdev);
 
-	rtc_set_alarm(alarm_rtc_dev, &rtc_alarm_bak);
+	memset(&alarm, 0, sizeof(alarm));
+	alarm.enabled = 0;
+	rtc_set_alarm(alarm_rtc_dev, &alarm);
+
 	spin_lock_irqsave(&alarm_slock, flags);
 	suspended = false;
 	update_timer_locked(&alarms[ANDROID_ALARM_RTC_WAKEUP], false);

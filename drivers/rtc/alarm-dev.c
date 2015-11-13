@@ -12,10 +12,7 @@
  * GNU General Public License for more details.
  *
  */
-/*================================================================================
-  EDIT HISTORY FOR MODULE
-   case                who           when            what, where, why
- ================================================================================*/
+
 #include <asm/mach/time.h>
 #include <linux/android_alarm.h>
 #include <linux/device.h>
@@ -27,8 +24,7 @@
 #include <linux/sysdev.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
-#include <linux/rtc.h>
-#define ALARM_AHEAD_TIME    (60)
+
 #define ANDROID_ALARM_PRINT_INFO (1U << 0)
 #define ANDROID_ALARM_PRINT_IO (1U << 1)
 #define ANDROID_ALARM_PRINT_INT (1U << 2)
@@ -186,23 +182,7 @@ from_old_alarm_set:
 			goto err1;
 		}
 		break;
-    case ANDROID_RTC_ALARM_SET:
-        if (copy_from_user(&new_alarm_time, (void __user *)arg,
-           sizeof(new_alarm_time))) {
-           rv = -EFAULT;
-           goto err1;
-        }
-        getnstimeofday(&tmp_time);
-        if((0 == new_alarm_time.tv_sec && 0 == new_alarm_time.tv_nsec) || \
-            (new_alarm_time.tv_sec - tmp_time.tv_sec) <= ALARM_AHEAD_TIME){
-            printk(KERN_DEBUG "set rtc alarm irq false\n");
-            alarm_set_rtc_alarm(tmp_time.tv_sec,false);
-        }
-        else{
-        /*inhead 60s to power up cpu*/
-            alarm_set_rtc_alarm((new_alarm_time.tv_sec - ALARM_AHEAD_TIME),true);
-        }
-        break;
+
 	default:
 		rv = -EINVAL;
 		goto err1;
